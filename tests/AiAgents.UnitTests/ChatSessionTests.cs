@@ -25,7 +25,11 @@ public sealed class ChatSessionTests
         ]);
         var session = CreateSession(client);
         var snapshots = new List<(string Text, int ActiveTools)>();
-        session.Changed += () => snapshots.Add((session.Messages[^1].Text, session.ActiveToolCount));
+        session.Changed += () =>
+        {
+            snapshots.Add((session.Messages[^1].Text, session.ActiveToolCount));
+            return Task.CompletedTask;
+        };
 
         await session.SendAsync("Question");
 
