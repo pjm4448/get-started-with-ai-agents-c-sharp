@@ -1,0 +1,58 @@
+@namespace AiAgents.Web.Components.Chat
+
+<section aria-label="Conversation">
+    @if (Messages.Count == 0)
+    {
+        <p>Messages will appear here when a conversation starts.</p>
+    }
+    else
+    {
+        <ol class="messages">
+            @foreach (var message in Messages)
+            {
+                <li class="message">
+                    <strong>@GetRoleLabel(message.Role)</strong>
+                    <div class="message-text">@message.Text</div>
+                    @if (message.Citations.Count > 0)
+                    {
+                        <div class="citations">
+                            <strong>Sources</strong>
+                            <ul>
+                                @foreach (var citation in message.Citations)
+                                {
+                                    <li>@citation</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+                </li>
+            }
+        </ol>
+    }
+    <p class="status" role="status" aria-live="polite">@StatusMessage</p>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ChatMessage> Messages { get; set; } = [];
+
+    [Parameter]
+    public ConversationStatus Status { get; set; }
+
+    private string StatusMessage => Status switch
+    {
+        ConversationStatus.Idle => string.Empty,
+        ConversationStatus.Responding => "Assistant is responding.",
+        ConversationStatus.Completed => "Response complete.",
+        ConversationStatus.Canceled => "Response canceled.",
+        ConversationStatus.Failed => "The response could not be completed.",
+        _ => throw new InvalidOperationException("Unknown conversation status.")
+    };
+
+    private static string GetRoleLabel(ChatMessageRole role) => role switch
+    {
+        ChatMessageRole.User => "You",
+        ChatMessageRole.Assistant => "Assistant",
+        _ => throw new InvalidOperationException("Unknown chat message role.")
+    };
+}

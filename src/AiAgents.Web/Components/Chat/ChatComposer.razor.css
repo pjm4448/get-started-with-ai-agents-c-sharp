@@ -1,0 +1,32 @@
+form {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+textarea {
+    box-sizing: border-box;
+    font: inherit;
+    max-width: 100%;
+    min-width: 0;
+    padding: 0.5rem;
+    resize: vertical;
+    width: 100%;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+button {
+    font: inherit;
+    padding: 0.5rem 1rem;
+}
+
+textarea:focus-visible,
+button:focus-visible {
+    outline: 3px solid #005fcc;
+    outline-offset: 2px;
+}

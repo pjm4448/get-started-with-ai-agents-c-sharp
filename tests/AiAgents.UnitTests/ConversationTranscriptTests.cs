@@ -1,0 +1,81 @@
+using AiAgents.Web.Components.Chat;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace AiAgents.UnitTests;
+
+public sealed class ConversationTranscriptTests
+{
+    [Fact]
+    public async Task RendersEmptyConversation()
+    {
+        string html = await RenderTranscriptAsync([], ConversationStatus.Idle);
+
+        Assert.Contains("Messages will appear here", html);
+        Assert.DoesNotContain("<ol", html);
+    }
+
+    [Fact]
+    public async Task RendersMessagesAndCitationsAsEncodedText()
+    {
+        ChatMessage[] messages =
+        [
+            new(ChatMessageRole.User, "<script>alert(1)</script>", []),
+            new(ChatMessageRole.Assistant, "Partial\nresponse", ["<img src=x onerror=alert(1)>"])
+        ];
+
+        string html = await RenderTranscriptAsync(messages, ConversationStatus.Responding);
+
+        Assert.Contains("&lt;script&gt;alert(1)&lt;/script&gt;", html);
+        Assert.Contains("&lt;img src=x onerror=alert(1)&gt;", html);
+        Assert.Contains("Partial\nresponse", System.Net.WebUtility.HtmlDecode(html));
+        Assert.DoesNotContain("<script>", html);
+        Assert.DoesNotContain("<img", html);
+        Assert.Contains("Assistant is responding.", html);
+        Assert.Contains("aria-live=\"polite\"", html);
+    }
+
+    [Theory]
+    [InlineData(ConversationStatus.Completed, "Response complete.")]
+    [InlineData(ConversationStatus.Canceled, "Response canceled.")]
+    [InlineData(ConversationStatus.Failed, "The response could not be completed.")]
+    public async Task AnnouncesTerminalStatus(ConversationStatus status, string message)
+    {
+        string html = await RenderTranscriptAsync([], status);
+
+        Assert.Contains(message, html);
+    }
+
+    private static Task<string> RenderTranscriptAsync(
+        IReadOnlyList<ChatMessage> messages,
+        ConversationStatus status)
+    {
+        return ComponentRenderer.RenderAsync<ConversationTranscript>(new Dictionary<string, object?>
+        {
+            [nameof(ConversationTranscript.Messages)] = messages,
+            [nameof(ConversationTranscript.Status)] = status
+        });
+    }
+}
+
+internal static class ComponentRenderer
+{
+    public static async Task<string> RenderAsync<TComponent>(Dictionary<string, object?> parameters)
+        where TComponent : IComponent
+    {
+        await using var services = new ServiceCollection()
+            .AddLogging()
+            .BuildServiceProvider();
+        await using var renderer = new HtmlRenderer(
+            services,
+            services.GetRequiredService<ILoggerFactory>());
+
+        return await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            var output = await renderer.RenderComponentAsync<TComponent>(ParameterView.FromDictionary(parameters));
+            return output.ToHtmlString();
+        });
+    }
+}

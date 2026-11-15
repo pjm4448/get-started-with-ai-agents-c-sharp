@@ -1,0 +1,66 @@
+@namespace AiAgents.Web.Components.Chat
+
+<form @onsubmit="SubmitAsync" @onsubmit:preventDefault>
+    <label for="chat-message">Message</label>
+    <textarea id="chat-message"
+              rows="4"
+              @bind:get="Value"
+              @bind:set="SetValueAsync"
+              @bind:event="oninput"
+              disabled="@(!CanCompose || IsResponding || _submitting)"></textarea>
+    <div class="actions">
+        <button type="submit" disabled="@(!CanSubmit)">Send</button>
+        @if (IsResponding)
+        {
+            <button type="button" disabled="@(!IsAvailable || !OnCancel.HasDelegate)" @onclick="OnCancel">Stop response</button>
+        }
+    </div>
+</form>
+
+@code {
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSubmit { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public bool IsAvailable { get; set; }
+
+    [Parameter]
+    public bool IsResponding { get; set; }
+
+    private bool _submitting;
+
+    private bool CanCompose => IsAvailable && ValueChanged.HasDelegate && OnSubmit.HasDelegate;
+
+    private bool CanSubmit => CanCompose && !IsResponding && !_submitting &&
+        !string.IsNullOrWhiteSpace(Value);
+
+    private Task SetValueAsync(string value) => ValueChanged.InvokeAsync(value);
+
+    private async Task SubmitAsync()
+    {
+        if (!CanSubmit)
+        {
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            await OnSubmit.InvokeAsync(Value);
+            await ValueChanged.InvokeAsync(string.Empty);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

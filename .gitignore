@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/TestResults/
+.vs/
+.env
+.env.*
+!.env.example
+.azure/*
+!.azure/deployment-plan.md
+*.user
+*.suo
