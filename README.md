@@ -5,6 +5,15 @@ authentication and Foundry agent access are implemented. The current solution
 contains typed agent-stream contracts and preliminary Blazor transcript and
 composer components. The composer remains disabled and citations are shown
 as labels only; they are not yet connected to an agent or conversation history.
+An initial Entra sign-in registration is present but is not yet wired into
+startup or verified against a real tenant. It requires a user-assigned managed
+identity federated to an app registration. That Azure credential is not
+available on an ordinary local workstation; the local sign-in approach remains
+an open decision. The registration expects the non-secret environment values
+`Entra__TenantId`, `Entra__ClientId`, and `Entra__ManagedIdentityClientId`,
+each a non-empty GUID. The app registration must trust that managed identity
+through a federated identity credential. No app registration or federation has
+been created.
 An initial Aspire AppHost composes the web project for local development; it
 cannot produce a running application until the web startup is implemented.
 Once startup is implemented, the intended local command is:
