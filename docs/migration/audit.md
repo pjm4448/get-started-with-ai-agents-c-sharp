@@ -149,13 +149,20 @@ runtime consumer; do not carry them forward without verifying purpose.
 
 | Principal | Resource and operation | Candidate assignment | Evidence and remaining work |
 | --- | --- | --- | --- |
-| Web runtime user-assigned identity | Invoke a preconfigured Foundry agent | Foundry Agent Consumer at the narrowest supported scope | [Foundry RBAC](https://learn.microsoft.com/en-us/azure/foundry/concepts/rbac-foundry) identifies this as the consumer role. Confirm that conversation/history operations are covered before finalizing. |
-| Setup identity | Create/update agent and evaluation resources | Appropriate Foundry authoring role | Verify each operation and scope; do not grant to runtime. |
+| Local developer credential; later a separate web runtime user-assigned identity | Invoke a preconfigured Foundry agent and access owned conversations/history | Foundry Agent Consumer is an endpoint-only candidate, not an approved assignment | Its current sole data action is `Microsoft.CognitiveServices/accounts/AIServices/endpoints/interact/action`. This does not establish coverage for explicit project conversation create/get/history APIs. Resolve exact permissions before assigning roles. |
+| Separate setup identity | Create/update agent and evaluation resources | Review project-scoped Foundry User (formerly Azure AI User) for authoring | Verify each operation and scope; its broad permissions are not a runtime fallback. Current [Foundry RBAC](https://learn.microsoft.com/en-us/azure/foundry/concepts/rbac-foundry) distinguishes modern projects from Azure AI Developer hub/workspace scenarios. |
 | Separate ingestion identity | Upload documents and create Search resources | Blob Data Contributor, Search Service Contributor and other roles only as required | Verify per-operation data and management permissions. |
 | Foundry **account** system-assigned identity | Access the AI Search tool | Search Index Data Contributor and Search Service Contributor on Search, per current tool prerequisites | [AI Search tool documentation](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/ai-search) explicitly lists these roles for keyless use. Test whether a narrower supported role works; do not assume project identity or reader-only access. |
 | Search service identity | Read Blob content and invoke embeddings | Blob Data Reader and the minimum supported model role | Verify keyless indexer, skillset and vectorizer configuration. |
 | Image-pull identity | Pull container image | AcrPull on the registry when supported by its authorization mode | Separate from runtime and deployment identity. |
 | GitHub federated principal | Provision, assign required roles and push images | Minimum deployment and registry permissions at needed scopes | Verify exact role-definition actions; role assignment itself requires explicit authority. |
+
+The local Entra web sign-in registration is not automatically the Azure SDK
+caller. Identify the selected developer principal and any inherited privileges
+before testing runtime least privilege. The current text-only local proposal
+does not authorize any assignment; see the
+[deployment plan](../../.azure/deployment-plan.md) for current quota,
+Australia-only processing, pricing and permission gates.
 
 ## SDK and architecture candidates
 
