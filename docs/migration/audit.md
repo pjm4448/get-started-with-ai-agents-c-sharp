@@ -162,10 +162,16 @@ runtime consumer; do not carry them forward without verifying purpose.
   only if a verified source contract or independent scaling requires one.
 - Aspire composes local services; Bicep remains the only production
   infrastructure definition.
-- [Azure.AI.Projects](https://www.nuget.org/packages/Azure.AI.Projects) has a
-  stable 2.0.1 release. Verify the exact package version and APIs for agent
-  references, streaming, file search, Search, evaluations and red teaming;
-  SDK availability does not prove every feature is GA.
+- Runtime invocation now uses `Azure.AI.Extensions.OpenAI` 3.0.0, whose
+  experimental Responses surface was explicitly approved for an isolated
+  adapter. Offline tests verify agent/version/conversation request mapping,
+  text, both retrieval-tool item types, citations, usage, safe terminal errors,
+  truncation, cancellation and no automatic POST retries. The Web application
+  does not register it. See the [SDK decision](../decisions/003-foundry-invocation-sdk.md).
+- `Azure.AI.Projects` remains a candidate for privileged setup, evaluations and
+  red teaming. Verify its current version and exact API support before adding
+  it; neither stable package numbering nor local transport tests prove service
+  features are GA or regionally available.
 - `Azure.Identity`, `Azure.Search.Documents`, `Azure.Storage.Blobs`, and
   OpenTelemetry/Azure Monitor are candidates. Use Microsoft.Extensions.AI only
   when it adds an actual abstraction; do not add Semantic Kernel without a

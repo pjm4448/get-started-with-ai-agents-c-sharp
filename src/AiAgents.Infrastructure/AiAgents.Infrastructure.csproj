@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\AiAgents.Application\AiAgents.Application.csproj" />
+    <PackageReference Include="Azure.AI.Extensions.OpenAI" />
+  </ItemGroup>
+</Project>

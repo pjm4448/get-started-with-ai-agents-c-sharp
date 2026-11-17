@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AiAgents.Application\AiAgents.Application.csproj" />
+    <ProjectReference Include="..\..\src\AiAgents.Infrastructure\AiAgents.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\AiAgents.Web\AiAgents.Web.csproj" />
   </ItemGroup>
 

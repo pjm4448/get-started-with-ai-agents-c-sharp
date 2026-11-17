@@ -1,5 +1,16 @@
 ﻿@inherits LayoutComponentBase
 
+<Microsoft.AspNetCore.Components.Authorization.AuthorizeView>
+    <Authorized>
+        <header>
+            <form method="post" action="/account/sign-out" data-enhance="false">
+                <AntiforgeryToken />
+                <button type="submit">Sign out of this app</button>
+            </form>
+        </header>
+    </Authorized>
+</Microsoft.AspNetCore.Components.Authorization.AuthorizeView>
+
 @Body
 
 <div id="blazor-error-ui" data-nosnippet>

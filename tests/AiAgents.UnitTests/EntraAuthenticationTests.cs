@@ -65,11 +65,13 @@ public sealed class EntraAuthenticationTests
         Assert.Equal(ClientId, oidc.ClientId);
         Assert.Equal("code", oidc.ResponseType);
         Assert.True(oidc.UsePkce);
+        Assert.True(oidc.UseTokenLifetime);
         Assert.False(oidc.SaveTokens);
 
         var cookie = provider.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
             .Get(CookieAuthenticationDefaults.AuthenticationScheme);
         Assert.Equal(CookieSecurePolicy.Always, cookie.Cookie.SecurePolicy);
+        Assert.False(cookie.SlidingExpiration);
 
         var auth = provider.GetRequiredService<IOptions<AuthenticationOptions>>().Value;
         Assert.Equal(OpenIdConnectDefaults.AuthenticationScheme, auth.DefaultScheme);

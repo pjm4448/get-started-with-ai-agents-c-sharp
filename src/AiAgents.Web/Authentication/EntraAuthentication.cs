@@ -67,10 +67,15 @@ public static class EntraAuthentication
                     options.ClientId = clientId;
                     options.ResponseType = "code";
                     options.UsePkce = true;
+                    options.UseTokenLifetime = true;
                     options.SaveTokens = false;
                     options.ClientCredentials = [credential];
                 },
-                options => options.Cookie.SecurePolicy = CookieSecurePolicy.Always)
+                options =>
+                {
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                    options.SlidingExpiration = false;
+                })
             .EnableTokenAcquisitionToCallDownstreamApi()
             .AddInMemoryTokenCaches();
 

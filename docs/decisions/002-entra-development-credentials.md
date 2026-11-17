@@ -29,6 +29,16 @@ unauthenticated requests. Pages and Blazor connections require authorization.
 The cookie does not retain access or refresh tokens. Token acquisition has an
 in-memory cache; it is not a persistent multi-replica token store.
 
+Tie cookie expiration to the Entra sign-in token lifetime and disable sliding
+expiration. Configure the generated Blazor hub to close connections at
+authentication expiration, without registering a duplicate hub endpoint.
+
+Provide a local sign-out POST that validates antiforgery tokens before clearing
+the application cookie. Redirect to a public signed-out page with an explicit
+sign-in link. Do not silently log the user straight back in or imply that
+Microsoft account sign-out has occurred. This requires no new Entra redirect
+URI or tenant modification.
+
 ## Alternatives considered
 
 - Client secrets: prohibited by the migration requirements.
@@ -38,6 +48,10 @@ in-memory cache; it is not a persistent multi-replica token store.
 - Host development exclusively on Azure: avoids local certificates but does not
   satisfy the desired local Aspire workflow.
 - Anonymous or fake local authentication: would not verify Entra sign-in.
+- Federated Entra sign-out: defer until callback registration and live
+  verification are approved; do not make unapproved tenant changes.
+- Sliding sessions: would extend an active session beyond its original
+  sign-in token expiration.
 
 ## Consequences
 
@@ -53,6 +67,12 @@ certificate by configuration does not prove that the private key is accessible
 or the public key is registered with Entra. Sign-in requires live verification.
 The Development environment must not be used for an Azure production deployment.
 
+Clearing a browser cookie does not revoke a copied cookie or another tab's
+existing circuit. Those sessions remain valid until expiration. Connection
+expiration does not itself cancel work in a retained circuit. Implement session
+revocation, operation cancellation, and user-isolation checks before enabling
+agent operations; do not treat transport closure as complete session management.
+
 ## Follow-up actions
 
 Separate approval was obtained for the local app registration and certificate.
@@ -66,6 +86,11 @@ endpoints. HTTP integration tests verify anonymous challenges and authenticated
 page rendering using a protected test cookie. The real local HTTPS host has
 also returned an Entra challenge using workstation configuration. This does
 not verify actual authorization-code redemption or browser sign-in.
+
+Local integration tests now verify successful sign-out with the rendered
+antiforgery token, rejection without a valid token, expired-cookie rejection,
+and actual Blazor WebSocket closure at cookie expiration. They use local test
+tickets, not real Entra tokens.
 
 Establish managed-identity federation for Azure. Verify live sign-in, sign-out,
 expiration, circuit revalidation, and user isolation before enabling agent

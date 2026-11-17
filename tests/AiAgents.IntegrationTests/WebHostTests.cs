@@ -1,5 +1,8 @@
 using System.Net;
+using System.Net.WebSockets;
 using System.Security.Claims;
+using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -31,14 +34,15 @@ public sealed class WebHostTests
     [Theory]
     [InlineData("/")]
     [InlineData("/_blazor/negotiate?negotiateVersion=1")]
+    [InlineData("/account/sign-out")]
     public async Task AnonymousRequestsCannotAccessTheApplication(string path)
     {
         await using var factory = new TestWebHost();
         using var client = CreateClient(factory);
 
-        using var response = path.StartsWith("/_blazor", StringComparison.Ordinal)
-            ? await client.PostAsync(path, null)
-            : await client.GetAsync(path);
+        using var response = path == "/"
+            ? await client.GetAsync(path)
+            : await client.PostAsync(path, null);
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.NotNull(response.Headers.Location);
@@ -52,14 +56,7 @@ public sealed class WebHostTests
     {
         await using var factory = new TestWebHost();
         using var client = CreateClient(factory);
-        var cookies = factory.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
-            .Get(CookieAuthenticationDefaults.AuthenticationScheme);
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, "test-user")],
-            CookieAuthenticationDefaults.AuthenticationScheme));
-        var ticket = new AuthenticationTicket(principal, CookieAuthenticationDefaults.AuthenticationScheme);
-        client.DefaultRequestHeaders.Add("Cookie",
-            $"{cookies.Cookie.Name}={cookies.TicketDataFormat.Protect(ticket)}");
+        client.DefaultRequestHeaders.Add("Cookie", CreateSessionCookie(factory));
 
         using var response = await client.GetAsync("/");
         string html = await response.Content.ReadAsStringAsync();
@@ -68,6 +65,116 @@ public sealed class WebHostTests
         Assert.Contains("You are signed in.", html);
         Assert.Contains("Chat is unavailable until Foundry agent integration is implemented.", html);
         Assert.Matches("<textarea[^>]*disabled", html);
+        Assert.Contains("Sign out of this app", html);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("invalid-token")]
+    public async Task SignOutRejectsMissingOrInvalidAntiforgeryToken(string? token)
+    {
+        await using var factory = new TestWebHost();
+        using var client = CreateClient(factory);
+        client.DefaultRequestHeaders.Add("Cookie", CreateSessionCookie(factory));
+        using var form = new FormUrlEncodedContent(token is null
+            ? []
+            : new Dictionary<string, string> { ["__RequestVerificationToken"] = token });
+
+        using var response = await client.PostAsync("/account/sign-out", form);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var page = await client.GetAsync("/");
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+    }
+
+    [Fact]
+    public async Task SignOutWithTheRenderedTokenClearsTheCookieAndReturnsToAnAnonymousPage()
+    {
+        await using var factory = new TestWebHost();
+        using var client = CreateClient(factory);
+        client.DefaultRequestHeaders.Add("Cookie", CreateSessionCookie(factory));
+        string html = await client.GetStringAsync("/");
+        var token = Regex.Match(html,
+            "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"",
+            RegexOptions.None, TimeSpan.FromSeconds(1));
+        Assert.True(token.Success);
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = WebUtility.HtmlDecode(token.Groups[1].Value)
+        });
+
+        using var response = await client.PostAsync("/account/sign-out", form);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/signed-out", response.Headers.Location?.OriginalString);
+        var cookies = factory.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+            .Get(CookieAuthenticationDefaults.AuthenticationScheme);
+        Assert.Contains(response.Headers.GetValues("Set-Cookie"),
+            cookie => cookie.StartsWith($"{cookies.Cookie.Name}=;", StringComparison.Ordinal)
+                && cookie.Contains("expires=Thu, 01 Jan 1970", StringComparison.Ordinal));
+
+        client.DefaultRequestHeaders.Remove("Cookie");
+        using var signedOut = await client.GetAsync("/signed-out");
+        Assert.Equal(HttpStatusCode.OK, signedOut.StatusCode);
+        Assert.Contains("Signed out of this app", await signedOut.Content.ReadAsStringAsync());
+        using var home = await client.GetAsync("/");
+        Assert.Equal(HttpStatusCode.Redirect, home.StatusCode);
+    }
+
+    [Fact]
+    public async Task SignOutCannotBeTriggeredWithAGetRequest()
+    {
+        await using var factory = new TestWebHost();
+        using var client = CreateClient(factory);
+        client.DefaultRequestHeaders.Add("Cookie", CreateSessionCookie(factory));
+
+        using var response = await client.GetAsync("/account/sign-out");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        using var home = await client.GetAsync("/");
+        Assert.Equal(HttpStatusCode.OK, home.StatusCode);
+    }
+
+    [Fact]
+    public async Task ExpiredSessionsCannotNegotiateABlazorConnection()
+    {
+        await using var factory = new TestWebHost();
+        using var client = CreateClient(factory);
+        client.DefaultRequestHeaders.Add("Cookie",
+            CreateSessionCookie(factory, DateTimeOffset.UtcNow.AddMinutes(-1)));
+
+        using var response = await client.PostAsync("/_blazor/negotiate?negotiateVersion=1", null);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("login.microsoftonline.com", response.Headers.Location?.Host);
+    }
+
+    [Fact]
+    public async Task ActiveBlazorConnectionClosesWhenTheSessionExpires()
+    {
+        await using var factory = new TestWebHost();
+        using var client = CreateClient(factory);
+        var sockets = factory.Server.CreateWebSocketClient();
+        string cookie = CreateSessionCookie(factory, DateTimeOffset.UtcNow.AddSeconds(5));
+        sockets.ConfigureRequest = request => request.Headers.Cookie = cookie;
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        using var socket = await sockets.ConnectAsync(
+            new Uri("wss://localhost:7124/_blazor"), timeout.Token);
+        await socket.SendAsync(
+            new ArraySegment<byte>(Encoding.UTF8.GetBytes("{\"protocol\":\"blazorpack\",\"version\":1}\u001e")),
+            WebSocketMessageType.Text, true, timeout.Token);
+        var buffer = new byte[4096];
+        var handshake = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), timeout.Token);
+        Assert.Equal("{}\u001e", Encoding.UTF8.GetString(buffer, 0, handshake.Count));
+
+        WebSocketReceiveResult received;
+        do
+        {
+            received = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), timeout.Token);
+        }
+        while (received.MessageType != WebSocketMessageType.Close);
+
+        Assert.Equal(WebSocketState.CloseReceived, socket.State);
     }
 
     [Fact]
@@ -86,6 +193,23 @@ public sealed class WebHostTests
             BaseAddress = new Uri("https://localhost:7124"),
             AllowAutoRedirect = false
         });
+
+    private static string CreateSessionCookie(TestWebHost factory, DateTimeOffset? expires = null)
+    {
+        var cookies = factory.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+            .Get(CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, "test-user")],
+            CookieAuthenticationDefaults.AuthenticationScheme));
+        var ticket = new AuthenticationTicket(principal,
+            new AuthenticationProperties
+            {
+                IssuedUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
+                ExpiresUtc = expires ?? DateTimeOffset.UtcNow.AddMinutes(30)
+            },
+            CookieAuthenticationDefaults.AuthenticationScheme);
+        return $"{cookies.Cookie.Name}={cookies.TicketDataFormat.Protect(ticket)}";
+    }
 
     private sealed class TestWebHost(string environment = "Development") : WebApplicationFactory<Program>
     {

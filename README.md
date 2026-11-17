@@ -10,6 +10,18 @@ The current solution contains typed agent-stream contracts and preliminary
 Blazor transcript and composer components. Citations are shown as labels only;
 they are not yet connected to an agent or conversation history.
 
+An offline-tested [Foundry adapter](src/AiAgents.Infrastructure/FoundryAgentClient.cs)
+now invokes an existing, version-pinned agent and maps text, retrieval-tool
+progress, citations, usage and terminal failures to application events. Its
+tests use the real SDK with an in-memory HTTP transport, not live model calls.
+It is **not registered in the web host**. Conversation ownership, credential
+selection, source audit gates, project/model configuration and live service
+verification remain prerequisites for enabling chat.
+
+The stable Foundry package still exposes experimental Responses APIs. Their
+isolated use was explicitly approved; see the
+[SDK decision and upgrade safeguards](docs/decisions/003-foundry-invocation-sdk.md).
+
 ## Local authentication
 
 The registration expects the
@@ -30,6 +42,18 @@ are stored using .NET user-secrets, not committed configuration. Azure
 managed-identity federation has not been configured. Actual browser sign-in and
 authorization-code redemption have not yet been verified.
 
+The session cookie expires with the Entra sign-in token and does not slide its
+expiration forward on activity. Active Blazor connections close when that
+session expires; expired cookies cannot open a new connection.
+
+The **Sign out of this app** button submits an antiforgery-protected POST and
+clears the browser's application cookie. The signed-out page remains public.
+This is local application sign-out, not Microsoft account sign-out: Entra's
+single sign-on session is unchanged. Other open tabs' existing connections are
+not immediately revoked and can remain active until their session expires.
+Central session revocation and circuit user-isolation verification are still
+required before enabling agent operations or production hosting.
+
 ## Local startup
 
 Prerequisite: .NET 10 SDK and the local authentication configuration above.
@@ -48,7 +72,9 @@ The HTTPS host has been smoke-tested with the local configuration: `/alive`
 and `/health` return 200, and an anonymous page request redirects to Entra.
 These probes currently check host health, not Foundry connectivity. Integration
 tests also verify protected Blazor negotiation, authenticated page rendering,
-and blocked Production startup without calling live Azure services.
+antiforgery-protected local sign-out, expired-cookie rejection, actual WebSocket
+closure at session expiration, and blocked Production startup without calling
+live Azure services.
 
 The Aspire AppHost composes the web project for local development.
 The [ServiceDefaults library](src/AiAgents.ServiceDefaults/Extensions.cs) now

@@ -1,6 +1,7 @@
 using AiAgents.ServiceDefaults;
 using AiAgents.Web.Authentication;
 using AiAgents.Web.Components;
+using Microsoft.AspNetCore.Http.Connections;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,9 +30,19 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapDefaultEndpoints();
-app.MapRazorComponents<App>()
+app.MapAccountEndpoints();
+var components = app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .RequireAuthorization();
+components.Add(endpoint =>
+{
+    // Configure the generated hub without mapping a second Blazor endpoint.
+    var connection = endpoint.Metadata.OfType<HttpConnectionDispatcherOptions>().SingleOrDefault();
+    if (connection is not null)
+    {
+        connection.CloseOnAuthenticationExpiration = true;
+    }
+});
 
 await app.RunAsync();
 

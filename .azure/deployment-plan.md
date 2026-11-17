@@ -34,15 +34,57 @@ File Search and optional Azure AI Search are both in scope.
   personal store; only its public certificate was uploaded to Entra.
 - Verified that the registration has no client secrets or requested API
   permissions. Local signing was verified; browser sign-in was not.
-- Resource group and Foundry project remain unselected. Production federation
-  is not configured.
+- The user selected preparation of a **new** Foundry project in Australia East,
+  rather than reuse of an existing project. No project, resource group, azd
+  environment or model deployment has been created for this selection.
+  Production federation is not configured.
 - This context does not authorize provisioning or Entra modifications.
+
+## Approved local development preparation
+
+- Foundry prerequisite setup was explicitly approved and completed, including
+  the microsoft.foundry and evaluation CLI extensions. Installing an evaluation
+  extension does not authorize running evaluations.
+- Existing Azure CLI and azd authentication checks passed without interactive
+  login or changing the active subscription.
+- Isolated experimental Responses SDK usage was explicitly approved and
+  documented in [ADR 003](../docs/decisions/003-foundry-invocation-sdk.md).
+- The adapter is offline-tested and is not registered in the Web host.
+
+## Read-only Australia East evidence
+
+Observed on 2026-11-17 in the confirmed subscription, using the regional
+Cognitive Services model catalog and usage management APIs:
+
+| Candidate | Catalog result | Quota limit / used / remaining |
+| --- | --- | --- |
+| gpt-5-mini, version 2025-08-07 | AIServices S0; GenerallyAvailable; Responses and agentsV2 advertised; GlobalStandard pay-per-token SKU | 1000 / 80 / 920 for OpenAI.GlobalStandard.gpt-5-mini |
+| text-embedding-3-small, version 1 | AIServices S0; GenerallyAvailable; Standard SKU available | 350 / 0 / 350 for OpenAI.Standard.text-embedding-3-small |
+
+Quota figures are the service's reported capacity counts, not measured request
+throughput or a guarantee of immediately allocatable deployment capacity.
+Embedding deployment is required only for the optional Search ingestion path.
+Catalog metadata lists gpt-5-mini inference deprecation on 2027-07-13;
+recheck support and a replacement path before production.
+
+The source parameter file's gpt-5-mini version 2025-08-07 matches this catalog
+entry; the source Bicep's default 2024-07-18 does not. Do not copy the latter.
+
+GlobalStandard permits global inference processing. Australia East resource
+placement does not establish Australia-only inference residency. Global
+processing acceptance, final capacity and costs remain unapproved. No alternate
+region has been selected; both primaryLocation and aiLocation remain
+australiaeast in the proposed design. See
+[ADR 004](../docs/decisions/004-australia-east-model-selection.md).
 
 ## Remaining work
 
 - Complete the source audit and record inaccessible script behavior as an
   explicit limitation.
-- Validate current SDKs, model availability, resource APIs, roles and quota.
+- Validate the remaining SDK operations, resource APIs, roles and service
+  availability. Refresh model and quota evidence immediately before deployment.
+- Confirm GlobalStandard processing residency or choose and verify a different
+  regional model; do not silently substitute either a model or region.
 - Select the resource group and remaining deployment context before live
   validation.
 - Define infrastructure, immutable image deployment and verification.
