@@ -1,3 +1,4 @@
+using AiAgents.Application;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -83,6 +84,10 @@ public static class EntraAuthentication
             .SetFallbackPolicy(new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
                 .Build());
+
+        services.AddScoped<ICurrentConversationOwner>(provider => new EntraConversationOwner(
+            provider.GetRequiredService<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>(),
+            Guid.Parse(tenantId)));
 
         return services;
     }

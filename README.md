@@ -14,9 +14,15 @@ An offline-tested [Foundry adapter](src/AiAgents.Infrastructure/FoundryAgentClie
 now invokes an existing, version-pinned agent and maps text, retrieval-tool
 progress, citations, usage and terminal failures to application events. Its
 tests use the real SDK with an in-memory HTTP transport, not live model calls.
-It is **not registered in the web host**. Conversation ownership, credential
-selection, source audit gates, project/model configuration and live service
-verification remain prerequisites for enabling chat.
+It is **not registered in the web host**. An offline-tested application boundary
+now creates conversations with an opaque Entra tenant/user ownership marker
+in Foundry metadata and checks that marker before sending messages or reading
+history. Missing, unowned and other-user conversations are uniformly denied;
+legacy conversations are never adopted. See the
+[ownership decision and limitations](docs/decisions/005-conversation-ownership.md).
+Ownership-aware UI wiring, credential selection, source audit gates,
+project/model configuration and live service verification remain prerequisites
+for enabling chat.
 
 The stable Foundry package still exposes experimental Responses APIs. Their
 isolated use was explicitly approved; see the

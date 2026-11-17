@@ -72,7 +72,7 @@ public sealed class ChatSessionTests
     {
         var logger = new RecordingLogger();
         var client = new SequenceClient([new TextDelta("Partial"), new AgentError("private backend details")]);
-        var session = new ChatSession(new AgentConversationService(client), logger, "conversation");
+        var session = new ChatSession(AgentConversationServiceTests.CreateService(client), logger, "conversation");
 
         await session.SendAsync("sensitive question");
 
@@ -102,7 +102,7 @@ public sealed class ChatSessionTests
     }
 
     private static ChatSession CreateSession(IAgentClient client) =>
-        new(new AgentConversationService(client), NullLogger<ChatSession>.Instance, "conversation");
+        new(AgentConversationServiceTests.CreateService(client), NullLogger<ChatSession>.Instance, "conversation");
 
     private sealed class SequenceClient(IReadOnlyList<AgentStreamEvent> events) : IAgentClient
     {

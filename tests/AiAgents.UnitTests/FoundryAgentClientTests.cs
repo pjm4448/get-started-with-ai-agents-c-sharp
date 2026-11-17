@@ -215,7 +215,7 @@ public sealed class FoundryAgentClientTests
         return $"event: {document.RootElement.GetProperty("type").GetString()}\ndata: {json}\n\n";
     }));
 
-    private sealed class TestCredential : TokenCredential
+    internal sealed class TestCredential : TokenCredential
     {
         public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken) =>
             new("test-token", DateTimeOffset.UtcNow.AddHours(1));

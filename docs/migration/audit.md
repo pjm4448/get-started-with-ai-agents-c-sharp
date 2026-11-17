@@ -30,7 +30,7 @@ not proof that every file's behavior was fully inspected.
 | Capability | Observed source | Migration and verification |
 | --- | --- | --- |
 | Agent | Startup retrieves an existing named/versioned agent or creates one with a configured model and a retrieval tool. | Separate privileged, repeatable setup from request handling. Verify new and existing agent behavior. |
-| Conversations | `/chat` uses a conversation and streams SSE; `/chat/history` lists recent items; the browser stores conversation and agent identifiers in cookies. | Bind each conversation to an authenticated user. Test isolation, history, refresh and new chat. |
+| Conversations | `/chat` uses a conversation and streams SSE; `/chat/history` lists recent items; the browser stores conversation and agent identifiers in cookies. | Offline-tested Foundry metadata ownership now gates send/history and is set at creation. UI, refresh, new chat and live isolation remain unverified; see [ownership](../decisions/005-conversation-ownership.md). |
 | Streaming | Deltas and completed messages include file or URL annotations; stream end is an explicit event. | Render typed incremental events, citations, completion, cancellation and safe errors; test interrupted streams. |
 | File Search | When Search is disabled, startup uploads bundled files into a vector store and attaches File Search. | Preserve document search and citations; make setup idempotent and report upload failures. |
 | AI Search | Optional setup creates blob storage content, index, data source, splitting/embedding skillset and two indexers. The agent tool requests `simple` queries despite vector and semantic index configuration and documentation describing hybrid search. | Preserve this actual mode and document any intentional extension to hybrid queries. Validate both indexers and citation output. |
@@ -168,6 +168,12 @@ runtime consumer; do not carry them forward without verifying purpose.
   text, both retrieval-tool item types, citations, usage, safe terminal errors,
   truncation, cancellation and no automatic POST retries. The Web application
   does not register it. See the [SDK decision](../decisions/003-foundry-invocation-sdk.md).
+- The same SDK now supplies conversation create/get/history behind an
+  application authorization boundary. Ownership uses server-resolved Entra
+  tenant/object claims and a stable opaque metadata marker. Missing, unowned
+  and foreign conversations are denied without adoption. Offline tests cover
+  identity changes, cross-tenant/user isolation and actual SDK pagination;
+  session revalidation, UI integration and live verification remain gates.
 - `Azure.AI.Projects` remains a candidate for privileged setup, evaluations and
   red teaming. Verify its current version and exact API support before adding
   it; neither stable package numbering nor local transport tests prove service

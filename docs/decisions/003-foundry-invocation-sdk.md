@@ -14,8 +14,9 @@ Package maturity is not a guarantee of API maturity.
 
 The user explicitly approved isolated use of this experimental surface.
 Pin the Foundry package centrally and lock its dependency graph. Contain SDK
-types inside Infrastructure and expose only application-owned stream events.
-Suppress only the two Responses diagnostics in the adapter file and the
+types inside Infrastructure and expose only application-owned stream,
+conversation and history models. Suppress only the two Responses/conversation
+diagnostics in the adapter file and the
 conversation-extension diagnostic at its single use, with a reference to
 this decision. Keep other warnings as errors.
 
@@ -29,14 +30,24 @@ logging. The eventual host must select developer credentials locally and an
 explicit managed identity in Azure. The host must not add retries around this
 adapter or use an HTTP handler that retries POSTs.
 
-The adapter does not create resources, agents, conversations, indexes, or
-evaluations. It does not accept a browser-supplied project endpoint or prove
-conversation ownership. It remains disconnected from the Web application
-until those boundaries and the source audit gates are resolved.
+Use `ProjectOpenAIClient` to construct the Responses and conversation clients
+with the same injected transport, authentication and no-retry/content-logging
+configuration. Conversations are created with ownership metadata in the first
+request; their metadata and typed history are read through
+`ProjectConversationsClient`. See [ownership](005-conversation-ownership.md)
+for the application authorization boundary. These APIs share the isolated
+`OPENAI001` diagnostic; no additional package or global suppression is needed.
+
+The adapter does not create Azure resources, agents, indexes or evaluations.
+It does not accept a browser-supplied project endpoint. Its low-level interfaces
+are not authorization boundaries: callers must use `AgentConversationService`,
+not invoke the provider directly. It remains disconnected from the Web
+application until the remaining integration and source audit gates are resolved.
 
 | Capability | SDK / abstraction | Status | Reason | Rejected alternative |
 | --- | --- | --- | --- | --- |
 | Existing-agent streaming | Azure.AI.Extensions.OpenAI 3.0.0; ProjectResponsesClient behind IAgentClient | Stable package, experimental Responses APIs | Foundry agent references, conversations and typed updates | Standalone model chat would lose agent/retrieval semantics |
+| Conversation creation, metadata and history | Same package; ProjectConversationsClient behind IConversationStore | Stable package, experimental conversation APIs | Persist ownership across application instances without another database | Process-local ownership loses persistence; a separate store adds consistency and deployment work |
 | Agent/project administration | Azure.AI.Projects; not yet added | Exact future version and operations require verification | Separate privileged setup boundary | Runtime agent creation would require elevated access |
 | Portable chat | Microsoft.Extensions.AI; not added | Not selected for this path | Existing application contract already isolates the provider | Wrapping every Foundry-specific update in another chat abstraction adds no demonstrated value |
 | Kernel/plugin orchestration | Semantic Kernel; not added | Not selected | No demonstrated need in this invocation path | Additional orchestration layer would obscure the managed-agent boundary |
@@ -75,8 +86,8 @@ Review the two upstream changelogs on each intentional upgrade. Once a stable
 Responses surface is available, remove the scoped diagnostics and rerun the
 request/stream tests. If the surface is removed or materially changed, keep the
 application contract and replace only the Infrastructure implementation.
-Resolve conversation ownership, configured credentials, resource selection,
-timeouts and live verification before connecting the adapter to the UI.
+Connect the offline-tested ownership boundary, configured credentials,
+resource selection, timeouts and live verification before enabling the UI.
 
 ## References
 
