@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Identity.Abstractions;
 using Microsoft.Identity.Web;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AiAgents.Web.Authentication;
 
@@ -85,9 +86,22 @@ public static class EntraAuthentication
                 .RequireAuthenticatedUser()
                 .Build());
 
-        services.AddScoped<ICurrentConversationOwner>(provider => new EntraConversationOwner(
-            provider.GetRequiredService<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>(),
-            Guid.Parse(tenantId)));
+        if (environment.IsDevelopment())
+        {
+            services.TryAddSingleton<TimeProvider>(TimeProvider.System);
+            services.AddSingleton(provider => new LocalSessionTicketStore(
+                provider.GetRequiredService<TimeProvider>(),
+                provider.GetRequiredService<ILogger<LocalSessionTicketStore>>(), Guid.Parse(tenantId)));
+            services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
+                .Configure<LocalSessionTicketStore, TimeProvider>((options, sessions, clock) =>
+                {
+                    options.SessionStore = sessions;
+                    options.TimeProvider = clock;
+                });
+            services.AddScoped<ICurrentConversationOwner>(provider => new EntraConversationOwner(
+                provider.GetRequiredService<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>(),
+                Guid.Parse(tenantId), provider.GetRequiredService<LocalSessionTicketStore>()));
+        }
 
         return services;
     }

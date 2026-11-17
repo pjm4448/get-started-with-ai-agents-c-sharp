@@ -45,20 +45,33 @@ outside Development; no local-credential fallback is configured. A local
 development app registration and signing certificate have been created with
 approval. This workstation's tenant ID, client ID, and certificate thumbprint
 are stored using .NET user-secrets, not committed configuration. Azure
-managed-identity federation has not been configured. Actual browser sign-in and
-authorization-code redemption have not yet been verified.
+managed-identity federation has not been configured. The user has now completed
+Microsoft sign-in and reached the disabled chat page on this workstation,
+verifying the development certificate's authorization-code flow.
 
 The session cookie expires with the Entra sign-in token and does not slide its
 expiration forward on activity. Active Blazor connections close when that
 session expires; expired cookies cannot open a new connection.
 
-The **Sign out of this app** button submits an antiforgery-protected POST and
-clears the browser's application cookie. The signed-out page remains public.
-This is local application sign-out, not Microsoft account sign-out: Entra's
-single sign-on session is unchanged. Other open tabs' existing connections are
-not immediately revoked and can remain active until their session expires.
-Central session revocation and circuit user-isolation verification are still
-required before enabling agent operations or production hosting.
+Development now uses ASP.NET Core server-side session tickets in a
+single-host, in-memory store. The **Sign out of this app** button submits an
+antiforgery-protected POST, revokes that session on the server and clears the
+browser cookie. Copies of that cookie can no longer authenticate. Conversation
+operations in other tabs using the same session are denied, and active
+creation, history and streaming work receive cancellation on sign-out or
+expiry. Independent sign-ins remain separate sessions.
+
+The signed-out page remains public. This is local application sign-out, not
+Microsoft account sign-out: Entra's single sign-on session is unchanged.
+An existing tab can still display its previous content until refreshed; it
+cannot use the revoked session for further conversation operations.
+
+**Restarting the host requires signing in again.** Existing cookies from before
+this update are also rejected rather than adopted. Repeat the browser sign-in
+and sign-out check after updating. Offline tests cover the new ticket lifecycle,
+but browser interaction with this change has not yet been reverified. A shared
+session store and cross-replica cancellation are required before production;
+see the [local session decision](docs/decisions/006-local-session-revocation.md).
 
 ## Local startup
 
@@ -77,10 +90,11 @@ the disabled chat shell, not a working agent.
 The HTTPS host has been smoke-tested with the local configuration: `/alive`
 and `/health` return 200, and an anonymous page request redirects to Entra.
 These probes currently check host health, not Foundry connectivity. Integration
-tests also verify protected Blazor negotiation, authenticated page rendering,
-antiforgery-protected local sign-out, expired-cookie rejection, actual WebSocket
-closure at session expiration, and blocked Production startup without calling
-live Azure services.
+tests also verify protected Blazor negotiation, authenticated page rendering
+through real cookie-handler sign-in, antiforgery-protected local sign-out,
+copied-cookie rejection after sign-out, expired-session rejection, actual
+WebSocket closure at session expiration, and blocked Production startup without
+calling live Azure services.
 
 The Aspire AppHost composes the web project for local development.
 The [ServiceDefaults library](src/AiAgents.ServiceDefaults/Extensions.cs) now

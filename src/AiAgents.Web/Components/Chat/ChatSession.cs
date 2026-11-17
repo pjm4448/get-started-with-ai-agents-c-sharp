@@ -82,7 +82,8 @@ public sealed class ChatSession
                 {
                     hasNext = await stream.MoveNextAsync();
                 }
-                catch (OperationCanceledException) when (request.IsCancellationRequested)
+                catch (OperationCanceledException exception) when (
+                    request.IsCancellationRequested || exception.CancellationToken.IsCancellationRequested)
                 {
                     Status = ConversationStatus.Canceled;
                     break;

@@ -6,13 +6,20 @@ using Microsoft.Identity.Web;
 namespace AiAgents.Web.Authentication;
 
 public sealed class EntraConversationOwner(
-    AuthenticationStateProvider authenticationState, Guid expectedTenantId) : ICurrentConversationOwner
+    AuthenticationStateProvider authenticationState, Guid expectedTenantId,
+    LocalSessionTicketStore sessions) : ICurrentConversationOwner
 {
     public async Task<ConversationOwner> GetAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var state = await authenticationState.GetAuthenticationStateAsync().WaitAsync(cancellationToken);
-        if (state.User.Identity is not ClaimsIdentity { IsAuthenticated: true } identity)
+        return ResolveOwner(state.User, expectedTenantId, sessions.GetSessionEnded(state.User));
+    }
+
+    internal static ConversationOwner ResolveOwner(
+        ClaimsPrincipal principal, Guid expectedTenantId, CancellationToken sessionEnded = default)
+    {
+        if (principal.Identity is not ClaimsIdentity { IsAuthenticated: true } identity)
         {
             throw new ConversationAccessException();
         }
@@ -24,7 +31,7 @@ public sealed class EntraConversationOwner(
             throw new ConversationAccessException();
         }
 
-        return new ConversationOwner(tenantId, objectId);
+        return new ConversationOwner(tenantId, objectId, sessionEnded);
     }
 
     private static Guid ReadId(ClaimsIdentity identity, string claimType, string mappedClaimType)

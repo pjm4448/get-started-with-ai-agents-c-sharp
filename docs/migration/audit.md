@@ -173,7 +173,10 @@ runtime consumer; do not carry them forward without verifying purpose.
   tenant/object claims and a stable opaque metadata marker. Missing, unowned
   and foreign conversations are denied without adoption. Offline tests cover
   identity changes, cross-tenant/user isolation and actual SDK pagination;
-  session revalidation, UI integration and live verification remain gates.
+  local session revalidation and cancellation are now enforced through
+  Development-only server-side tickets. UI integration, live provider
+  verification and shared production sessions remain gates; see the
+  [session decision](../decisions/006-local-session-revocation.md).
 - `Azure.AI.Projects` remains a candidate for privileged setup, evaluations and
   red teaming. Verify its current version and exact API support before adding
   it; neither stable package numbering nor local transport tests prove service

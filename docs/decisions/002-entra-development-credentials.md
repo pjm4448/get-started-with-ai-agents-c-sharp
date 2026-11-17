@@ -33,8 +33,9 @@ Tie cookie expiration to the Entra sign-in token lifetime and disable sliding
 expiration. Configure the generated Blazor hub to close connections at
 authentication expiration, without registering a duplicate hub endpoint.
 
-Provide a local sign-out POST that validates antiforgery tokens before clearing
-the application cookie. Redirect to a public signed-out page with an explicit
+Provide a local sign-out POST that validates antiforgery tokens before revoking
+the server-side session ticket and clearing the application cookie. Redirect to
+a public signed-out page with an explicit
 sign-in link. Do not silently log the user straight back in or imply that
 Microsoft account sign-out has occurred. This requires no new Entra redirect
 URI or tenant modification.
@@ -64,14 +65,15 @@ app registration, or federation is automatically created by this code.
 
 Certificates require renewal and private-key access controls. Selecting a
 certificate by configuration does not prove that the private key is accessible
-or the public key is registered with Entra. Sign-in requires live verification.
+or the public key is registered with Entra. Live sign-in has been verified by the user on this
+workstation; certificate renewal and other environments still need verification.
 The Development environment must not be used for an Azure production deployment.
 
-Clearing a browser cookie does not revoke a copied cookie or another tab's
-existing circuit. Those sessions remain valid until expiration. Connection
-expiration does not itself cancel work in a retained circuit. Implement session
-revocation, operation cancellation, and user-isolation checks before enabling
-agent operations; do not treat transport closure as complete session management.
+Clearing a browser cookie alone does not revoke copies or cancel retained
+circuit work. The approved [local server-side ticket store](006-local-session-revocation.md)
+now enforces revocation and conversation-operation cancellation independently
+of transport closure. It is Development-only, not a distributed production
+session service. Existing tabs may still display previously delivered content.
 
 ## Follow-up actions
 
@@ -84,14 +86,18 @@ secrets were added.
 Authentication is now wired into Development startup and protected Blazor
 endpoints. HTTP integration tests verify anonymous challenges and authenticated
 page rendering using a protected test cookie. The real local HTTPS host has
-also returned an Entra challenge using workstation configuration. This does
-not verify actual authorization-code redemption or browser sign-in.
+also returned an Entra challenge using workstation configuration. The user
+subsequently confirmed completing Microsoft sign-in and seeing the disabled
+chat page, verifying real browser sign-in and authorization-code redemption.
 
 Local integration tests now verify successful sign-out with the rendered
 antiforgery token, rejection without a valid token, expired-cookie rejection,
 and actual Blazor WebSocket closure at cookie expiration. They use local test
-tickets, not real Entra tokens.
+tickets through the real cookie handler, not real Entra tokens. They also
+verify that sign-out revokes a copied cookie for pages and Blazor negotiation.
 
-Establish managed-identity federation for Azure. Verify live sign-in, sign-out,
-expiration, circuit revalidation, and user isolation before enabling agent
-operations or production hosting. Production startup remains explicitly blocked.
+Establish managed-identity federation for Azure. Reverify browser sign-in and
+sign-out after the server-side ticket change, and verify the eventual chat UI's
+session-expiry and user-isolation behavior. Select shared session storage and
+cross-replica cancellation before production. Production startup remains
+explicitly blocked.

@@ -16,6 +16,8 @@ No browser-supplied owner identifier is accepted by the application service.
 
 The Web resolver reads the current server-side `AuthenticationStateProvider`
 for each operation, rather than caching the principal in a circuit service.
+It also requires a live server-side application session; see the
+[local session decision](006-local-session-revocation.md).
 It requires an authenticated identity, the configured tenant, and non-empty
 GUID `tid` and `oid` claims (or their Microsoft.Identity.Web mapped aliases).
 Missing, malformed or conflicting claims fail closed. Claims from different
@@ -82,12 +84,15 @@ metadata. Keep such access restricted; never expose the app's provider identity
 or metadata mutation operations to the browser. The marker must not be used
 as an access token or recorded in logs.
 
-Re-reading authentication state does not perform a fresh Entra token
-validation or centrally revoke cookies. A retained Blazor circuit can still
-have stale authenticated state after another tab signs out. These checks do
-not terminate an operation whose authorization has already completed.
-Authentication expiry, sign-out/revocation and cancellation of retained
-circuit work remain separate integration gates before chat is enabled.
+Re-reading authentication state does not perform fresh Entra token validation.
+A retained circuit can still contain an old principal after another tab signs
+out, so the local session store independently rejects revoked sessions and
+supplies a session-ended cancellation token. Application operations link that
+token with caller cancellation for creation, metadata lookup, history and
+streaming. No further events are yielded after cancellation is observed.
+This stops cooperative local work, not necessarily provider-side execution or
+billing. Shared session revocation and cancellation across production replicas
+remain unimplemented.
 
 Metadata checks and generation are not a provider-side transaction.
 Application code never changes ownership, but privileged external writes or
@@ -105,7 +110,9 @@ conversation permissions remain unverified.
 
 ## Follow-up actions
 
-Verify actual browser sign-in, session revalidation and cancellation boundaries.
+Browser sign-in has been confirmed by the user. Reverify it after the local
+server-side ticket change, and verify session expiry/sign-out through the
+eventual interactive chat UI.
 Wire creation, history and streaming exclusively through the application
 service with a safe error boundary. Add component/end-to-end isolation and
 refresh tests, then verify metadata and least-privilege access against an

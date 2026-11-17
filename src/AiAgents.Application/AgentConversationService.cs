@@ -9,13 +9,16 @@ public sealed class AgentConversationService(
     {
         cancellationToken.ThrowIfCancellationRequested();
         var owner = await currentOwner.GetAsync(cancellationToken);
-        var conversation = await conversations.CreateAsync(owner.Marker, cancellationToken);
+        using var operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, owner.SessionEnded);
+        var token = operation.Token;
+        token.ThrowIfCancellationRequested();
+        var conversation = await conversations.CreateAsync(owner.Marker, token);
         if (string.IsNullOrWhiteSpace(conversation.Id) || conversation.OwnerMarker != owner.Marker)
         {
             throw new InvalidDataException("The conversation store did not preserve ownership.");
         }
 
-        await EnsureCurrentOwnerAsync(owner, cancellationToken);
+        await EnsureCurrentOwnerAsync(owner, token);
         return conversation.Id;
     }
 
@@ -24,11 +27,15 @@ public sealed class AgentConversationService(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
-        await AuthorizeAsync(conversationId, cancellationToken);
-        await foreach (var item in conversations.GetHistoryAsync(conversationId, cancellationToken)
-            .WithCancellation(cancellationToken))
+        cancellationToken.ThrowIfCancellationRequested();
+        var owner = await currentOwner.GetAsync(cancellationToken);
+        using var operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, owner.SessionEnded);
+        var token = operation.Token;
+        await AuthorizeAsync(conversationId, owner, token);
+        await foreach (var item in conversations.GetHistoryAsync(conversationId, token)
+            .WithCancellation(token))
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            token.ThrowIfCancellationRequested();
             yield return item;
         }
     }
@@ -40,21 +47,24 @@ public sealed class AgentConversationService(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(conversationId);
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
-        await AuthorizeAsync(conversationId, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var owner = await currentOwner.GetAsync(cancellationToken);
+        using var operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, owner.SessionEnded);
+        var token = operation.Token;
+        await AuthorizeAsync(conversationId, owner, token);
 
         await foreach (AgentStreamEvent item in agentClient
-            .StreamAsync(conversationId, message, cancellationToken)
-            .WithCancellation(cancellationToken))
+            .StreamAsync(conversationId, message, token)
+            .WithCancellation(token))
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            token.ThrowIfCancellationRequested();
             yield return item;
         }
     }
 
-    private async Task AuthorizeAsync(string conversationId, CancellationToken cancellationToken)
+    private async Task AuthorizeAsync(string conversationId, ConversationOwner owner, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var owner = await currentOwner.GetAsync(cancellationToken);
         var conversation = await conversations.GetAsync(conversationId, cancellationToken);
         if (conversation is null || conversation.Id != conversationId || conversation.OwnerMarker != owner.Marker)
         {
@@ -68,7 +78,7 @@ public sealed class AgentConversationService(
     {
         // Identity can change while a provider operation is in flight.
         var latestOwner = await currentOwner.GetAsync(cancellationToken);
-        if (latestOwner.Marker != owner.Marker)
+        if (latestOwner.Marker != owner.Marker || latestOwner.SessionEnded != owner.SessionEnded)
         {
             throw new ConversationAccessException();
         }

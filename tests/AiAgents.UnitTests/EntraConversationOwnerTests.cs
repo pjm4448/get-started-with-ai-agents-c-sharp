@@ -16,12 +16,15 @@ public sealed class EntraConversationOwnerTests
     [InlineData(true)]
     public async Task ResolvesAuthenticatedStableTenantAndObjectClaimsWithoutCaching(bool mapped)
     {
+        using var sessions = LocalSessionTests.CreateStore();
+        var (_, principal) = await LocalSessionTests.SignInAsync(sessions,
+            Principal(mapped ? ClaimConstants.TenantId : ClaimConstants.Tid, TenantId.ToString(),
+                mapped ? ClaimConstants.ObjectId : ClaimConstants.Oid, ObjectId.ToString()));
         var provider = new TestAuthenticationStateProvider
         {
-            User = Principal(mapped ? ClaimConstants.TenantId : ClaimConstants.Tid, TenantId.ToString(),
-                mapped ? ClaimConstants.ObjectId : ClaimConstants.Oid, ObjectId.ToString())
+            User = principal
         };
-        var resolver = new EntraConversationOwner(provider, TenantId);
+        var resolver = new EntraConversationOwner(provider, TenantId, sessions);
 
         var owner = await resolver.GetAsync(default);
         Assert.Equal(new ConversationOwner(TenantId, ObjectId).Marker, owner.Marker);
@@ -43,7 +46,8 @@ public sealed class EntraConversationOwnerTests
     [InlineData("split-identities")]
     public async Task RejectsMissingInvalidOrConflictingIdentity(string scenario)
     {
-        var user = Principal(ClaimConstants.Tid, TenantId.ToString(), ClaimConstants.Oid, ObjectId.ToString());
+        using var sessions = LocalSessionTests.CreateStore();
+        var (_, user) = await LocalSessionTests.SignInAsync(sessions);
         var identity = Assert.IsType<ClaimsIdentity>(user.Identity);
         switch (scenario)
         {
@@ -77,7 +81,7 @@ public sealed class EntraConversationOwnerTests
                 break;
         }
 
-        var resolver = new EntraConversationOwner(new TestAuthenticationStateProvider { User = user }, TenantId);
+        var resolver = new EntraConversationOwner(new TestAuthenticationStateProvider { User = user }, TenantId, sessions);
         await Assert.ThrowsAsync<ConversationAccessException>(() => resolver.GetAsync(default));
     }
 

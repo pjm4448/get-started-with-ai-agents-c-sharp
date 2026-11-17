@@ -3,6 +3,9 @@ using System.Net.WebSockets;
 using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
+using AiAgents.Web.Authentication;
+using AiAgents.Application;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -12,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.Identity.Web;
 
 namespace AiAgents.IntegrationTests;
 
@@ -56,7 +60,7 @@ public sealed class WebHostTests
     {
         await using var factory = new TestWebHost();
         using var client = CreateClient(factory);
-        client.DefaultRequestHeaders.Add("Cookie", CreateSessionCookie(factory));
+        client.DefaultRequestHeaders.Add("Cookie", await CreateSessionCookieAsync(factory));
 
         using var response = await client.GetAsync("/");
         string html = await response.Content.ReadAsStringAsync();
@@ -75,7 +79,7 @@ public sealed class WebHostTests
     {
         await using var factory = new TestWebHost();
         using var client = CreateClient(factory);
-        client.DefaultRequestHeaders.Add("Cookie", CreateSessionCookie(factory));
+        client.DefaultRequestHeaders.Add("Cookie", await CreateSessionCookieAsync(factory));
         using var form = new FormUrlEncodedContent(token is null
             ? []
             : new Dictionary<string, string> { ["__RequestVerificationToken"] = token });
@@ -92,7 +96,11 @@ public sealed class WebHostTests
     {
         await using var factory = new TestWebHost();
         using var client = CreateClient(factory);
-        client.DefaultRequestHeaders.Add("Cookie", CreateSessionCookie(factory));
+        string cookie = await CreateSessionCookieAsync(factory);
+        client.DefaultRequestHeaders.Add("Cookie", cookie);
+        var principal = await AuthenticateSessionAsync(factory, cookie);
+        var sessions = factory.Services.GetRequiredService<LocalSessionTicketStore>();
+        var ended = sessions.GetSessionEnded(principal);
         string html = await client.GetStringAsync("/");
         var token = Regex.Match(html,
             "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"",
@@ -112,6 +120,12 @@ public sealed class WebHostTests
         Assert.Contains(response.Headers.GetValues("Set-Cookie"),
             cookie => cookie.StartsWith($"{cookies.Cookie.Name}=;", StringComparison.Ordinal)
                 && cookie.Contains("expires=Thu, 01 Jan 1970", StringComparison.Ordinal));
+        Assert.True(ended.IsCancellationRequested);
+        Assert.Throws<ConversationAccessException>(() => sessions.GetSessionEnded(principal));
+        using var replayedPage = await client.GetAsync("/");
+        Assert.Equal(HttpStatusCode.Redirect, replayedPage.StatusCode);
+        using var replayedNegotiation = await client.PostAsync("/_blazor/negotiate?negotiateVersion=1", null);
+        Assert.Equal(HttpStatusCode.Redirect, replayedNegotiation.StatusCode);
 
         client.DefaultRequestHeaders.Remove("Cookie");
         using var signedOut = await client.GetAsync("/signed-out");
@@ -126,7 +140,7 @@ public sealed class WebHostTests
     {
         await using var factory = new TestWebHost();
         using var client = CreateClient(factory);
-        client.DefaultRequestHeaders.Add("Cookie", CreateSessionCookie(factory));
+        client.DefaultRequestHeaders.Add("Cookie", await CreateSessionCookieAsync(factory));
 
         using var response = await client.GetAsync("/account/sign-out");
 
@@ -141,9 +155,29 @@ public sealed class WebHostTests
         await using var factory = new TestWebHost();
         using var client = CreateClient(factory);
         client.DefaultRequestHeaders.Add("Cookie",
-            CreateSessionCookie(factory, DateTimeOffset.UtcNow.AddMinutes(-1)));
+            await CreateSessionCookieAsync(factory, DateTimeOffset.UtcNow.AddSeconds(1)));
+        await Task.Delay(TimeSpan.FromSeconds(1.2));
 
         using var response = await client.PostAsync("/_blazor/negotiate?negotiateVersion=1", null);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("login.microsoftonline.com", response.Headers.Location?.Host);
+    }
+
+    [Fact]
+    public async Task LegacySelfContainedCookiesCannotBypassTheServerSessionStore()
+    {
+        await using var factory = new TestWebHost();
+        using var client = CreateClient(factory);
+        var cookies = factory.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+            .Get(CookieAuthenticationDefaults.AuthenticationScheme);
+        var ticket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, "legacy-user")], CookieAuthenticationDefaults.AuthenticationScheme)),
+            new AuthenticationProperties { ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(30) },
+            CookieAuthenticationDefaults.AuthenticationScheme);
+        client.DefaultRequestHeaders.Add("Cookie", $"{cookies.Cookie.Name}={cookies.TicketDataFormat.Protect(ticket)}");
+
+        using var response = await client.GetAsync("/");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("login.microsoftonline.com", response.Headers.Location?.Host);
@@ -155,7 +189,7 @@ public sealed class WebHostTests
         await using var factory = new TestWebHost();
         using var client = CreateClient(factory);
         var sockets = factory.Server.CreateWebSocketClient();
-        string cookie = CreateSessionCookie(factory, DateTimeOffset.UtcNow.AddSeconds(5));
+        string cookie = await CreateSessionCookieAsync(factory, DateTimeOffset.UtcNow.AddSeconds(5));
         sockets.ConfigureRequest = request => request.Headers.Cookie = cookie;
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         using var socket = await sockets.ConnectAsync(
@@ -194,21 +228,38 @@ public sealed class WebHostTests
             AllowAutoRedirect = false
         });
 
-    private static string CreateSessionCookie(TestWebHost factory, DateTimeOffset? expires = null)
+    private static async Task<string> CreateSessionCookieAsync(TestWebHost factory, DateTimeOffset? expires = null)
     {
-        var cookies = factory.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
-            .Get(CookieAuthenticationDefaults.AuthenticationScheme);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var context = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        context.Request.Scheme = "https";
+        context.Request.Host = new HostString("localhost", 7124);
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, "test-user")],
+            [
+                new Claim(ClaimTypes.NameIdentifier, "test-user"),
+                new Claim(ClaimConstants.Tid, "11111111-1111-4111-8111-111111111111"),
+                new Claim(ClaimConstants.Oid, "33333333-3333-4333-8333-333333333333")
+            ],
             CookieAuthenticationDefaults.AuthenticationScheme));
-        var ticket = new AuthenticationTicket(principal,
+        await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal,
             new AuthenticationProperties
             {
                 IssuedUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
                 ExpiresUtc = expires ?? DateTimeOffset.UtcNow.AddMinutes(30)
-            },
-            CookieAuthenticationDefaults.AuthenticationScheme);
-        return $"{cookies.Cookie.Name}={cookies.TicketDataFormat.Protect(ticket)}";
+            });
+        return Assert.IsType<string>(Assert.Single(context.Response.Headers.SetCookie)).Split(';')[0];
+    }
+
+    private static async Task<ClaimsPrincipal> AuthenticateSessionAsync(TestWebHost factory, string cookie)
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var context = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        context.Request.Scheme = "https";
+        context.Request.Host = new HostString("localhost", 7124);
+        context.Request.Headers.Cookie = cookie;
+        var result = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        Assert.True(result.Succeeded);
+        return Assert.IsType<ClaimsPrincipal>(result.Principal);
     }
 
     private sealed class TestWebHost(string environment = "Development") : WebApplicationFactory<Program>
