@@ -17,10 +17,13 @@ production delivery remain later migration phases, not omitted capabilities.
 
 - Require Microsoft Entra authentication.
 - No service keys, client secrets or Python runtime.
-- Default primary and AI locations to Australia East; any AI fallback must be
-  explicitly selected and documented.
-- The user requires processing to remain within Australia. GlobalStandard and
-  APAC Data Zone do not satisfy that requirement.
+- The user explicitly selected `primaryLocation=eastus` and `aiLocation=eastus`
+  for this environment, including future non-AI regional resources. This
+  overrides the original Australia East baseline; no runtime fallback is allowed.
+- The user selected gpt-5-mini with GlobalStandard and explicitly accepted
+  global inference processing. This supersedes the earlier Australia-only
+  requirement; East US placement does not constrain inference to East US or
+  to the United States.
 - The monthly budget is **unset**. A blank budget response is not approval for
   any amount, including the previously suggested USD 10.
 - Keep runtime, image-pull, ingestion and deployment identities separate.
@@ -44,8 +47,9 @@ production delivery remain later migration phases, not omitted capabilities.
   permissions. The user verified real browser sign-in before the server-side
   ticket-store update; reverify that flow after updating. Offline browser tests
   use synthetic application sessions, not real Entra sign-in.
-- The user selected preparation of a **new** Foundry project in Australia East,
-  rather than reuse of an existing project. No project, resource group, azd
+- The user selected preparation of a **new** Foundry project, rather than reuse
+  of an existing project, and explicitly revised its location to East US on
+  2026-11-17. No project, resource group, azd
   environment or model deployment has been created for this selection.
   Production federation is not configured.
 - This context does not authorize provisioning or Entra modifications.
@@ -69,9 +73,9 @@ production delivery remain later migration phases, not omitted capabilities.
 | --- | --- | --- |
 | Local web application | Existing Blazor host and existing Entra sign-in | No cloud compute deployment; keep chat disabled until activation is separately approved |
 | Resource group | New, explicitly named development group | Name and deployment permissions still require review |
-| Foundry account | `Microsoft.CognitiveServices/accounts`, AIServices, S0 | Australia East; disable local/key authentication |
+| Foundry account | `Microsoft.CognitiveServices/accounts`, AIServices, S0 | East US; disable local/key authentication |
 | Foundry project | `Microsoft.CognitiveServices/accounts/projects` | Child of the new account; platform identity requirements still need verification |
-| Model deployment | `Microsoft.CognitiveServices/accounts/deployments` | Regional Standard only; model/version/capacity require approval and positive quota |
+| Model deployment | `Microsoft.CognitiveServices/accounts/deployments` | Selected gpt-5-mini, GlobalStandard, East US; version/capacity and deployment still require approval |
 | Saved prompt agent | Data-plane authoring operation with a recorded name/version | Text-only, no external tools, files or retrieval; matches the existing version-pinned SDK adapter |
 | Foundry-managed state | Conversations and Responses history | Review storage, retention, deletion and processing terms; New chat does not delete provider history |
 
@@ -92,7 +96,41 @@ Key Vault or Azure Monitor resources solely for this first text-only test.
 Revisit each at its mapped retrieval/production milestone; existing local
 telemetry remains available without logging prompts or responses.
 
-## Read-only Australia East evidence: current regional candidates
+## Read-only East US evidence: selected model and SKU
+
+Observed on 2026-11-17 in the confirmed subscription, using the service-native
+regional model catalog and usage commands with an explicit subscription:
+
+| Property | Observation |
+| --- | --- |
+| Account kind / SKU | AIServices / S0 |
+| Model / version | gpt-5-mini / 2025-08-07 |
+| Lifecycle | GenerallyAvailable |
+| Capabilities | Responses and agentsV2 advertised |
+| Deployment SKU | GlobalStandard |
+| Quota record | `OpenAI.GlobalStandard.gpt-5-mini` |
+| Limit / used / remaining | **1000 / 80 / 920**, unit Count |
+| Inference/SKU deprecation | 2027-07-13 |
+
+The East US quota observation removes the earlier zero-regional-quota blocker
+for this selected GlobalStandard path. It does not guarantee allocatable
+capacity, project/service availability, permission coverage or successful
+inference. The catalog reports a default capacity of 10, but does not report
+a minimum or step; do not interpret that default as an approved deployment
+size, a spending cap or proof of a minimum. Capacity is still to be selected.
+
+The user confirmed both the global-processing implications and moving future
+non-AI regional resources to East US. This is approval to revise the proposal
+and perform read-only checks, not to provision or activate chat. Existing
+resources have not been moved.
+
+Review Foundry conversation storage and retention under the US resource
+geography, together with global inference, content safety, abuse monitoring
+and diagnostics. The design no longer promises Australian residency or
+US-only processing. Measure local-to-East-US latency; do not assume that
+global inference routing removes the local application's network latency.
+
+## Historical Australia East evidence: superseded regional-only investigation
 
 Observed on 2026-11-17 for AIServices S0. Each candidate below advertises
 Responses, agentsV2 and a Standard SKU:
@@ -103,12 +141,10 @@ Responses, agentsV2 and a Standard SKU:
 | gpt-4.1-mini / 2025-04-14 | Legacy | 2027-04-14 | `OpenAI.Standard.gpt4.1-mini` | **0 / 0 / 0** |
 | gpt-4o / 2024-11-20 | Legacy | 2027-04-14 | `OpenAI.Standard.gpt-4o` | **0 / 0 / 0** |
 
-**Deployment is blocked by regional quota.** Prefer investigating a quota
-increase for the GA gpt-5.6-sol candidate over adopting a legacy model or
-relaxing residency. This is not a model selection or authorization to submit
-a quota request. Capacity, price, quality and actual saved-agent compatibility
-remain unapproved. The catalog's default capacity is not proof of an allowed
-minimum or available allocation.
+These zero quotas blocked the earlier Australia-only proposal. The user has
+since replaced that requirement with the East US GlobalStandard selection
+above. Do not request quota for these superseded candidates or treat their
+quota as the current East US quota.
 
 The generic quota CLI extension was unavailable. No extension was installed
 and no provider was registered for this research. The service-native
@@ -116,16 +152,11 @@ and no provider was registered for this research. The service-native
 `az cognitiveservices model list` supplied model metadata. Both were explicitly
 scoped to the confirmed subscription. No quota increase was submitted.
 
-Standard constrains inference to the selected Azure **geography**, not
-necessarily a single region. An Australian deployment therefore needs an
-Australia-geography review; do not promise Australia East-only processing.
-Foundry Agent Service and Responses documentation also describe state stored
-in the resource geography, with model/tool processing dependent on their
-configuration. Review the complete selected path, including content safety,
-abuse monitoring and diagnostics, before claiming the Australia-only
-requirement has been verified. External tools are excluded from this milestone.
+Standard would constrain inference to an Azure geography, not necessarily a
+single region. GlobalStandard, the newly selected SKU, does not provide that
+geography constraint. External tools remain excluded from the first milestone.
 
-## Historical catalog evidence: not an approved residency option
+## Historical Australia East evidence: global model and embeddings
 
 Observed on 2026-11-17 in the confirmed subscription, using the regional
 Cognitive Services model catalog and usage management APIs:
@@ -144,12 +175,11 @@ recheck support and a replacement path before production.
 The source parameter file's gpt-5-mini version 2025-08-07 matches this catalog
 entry; the source Bicep's default 2024-07-18 does not. Do not copy the latter.
 
-GlobalStandard permits global inference processing. Australia East resource
-placement does not establish Australia-only inference residency. The user's
-subsequent Australia-only requirement excludes this GlobalStandard candidate,
-regardless of its reported remaining quota. No alternate region has been
-selected; both primaryLocation and aiLocation remain australiaeast in the
-proposed design. See
+This table records Australia East observations, not East US allocation.
+GlobalStandard permits global inference processing regardless of resource
+placement. The earlier Australia-only exclusion was explicitly superseded;
+both primaryLocation and aiLocation are now eastus in this environment's
+proposal. See
 [ADR 004](../docs/decisions/004-australia-east-model-selection.md).
 
 ## Identity and RBAC proposal: assignments remain gated
@@ -205,14 +235,14 @@ application's conversation ownership and session checks.
 No monthly budget or usage forecast is approved. No paid operation is
 authorized by this proposal.
 
-The public Retail Prices API query for Australia East meters containing
-`5.6 sol`, following pagination, returned 16 meters on 2026-11-17. All had
-global (`Gl`) SKU names. Their Australia East billing location does not make
-them prices for geography-based Standard. A regional Standard price has
-**not** been verified; do not use those global prices to claim an Australian
-deployment estimate.
+The 2026-11-17 public Retail Prices API checks followed pagination. The
+East US exact-model results identified priority-processing (`pp`) global and
+Data Zone meters, not an unambiguous ordinary GlobalStandard rate for the
+selected model. Do not substitute priority, Data Zone, Batch, another model
+or the superseded gpt-5.6-sol prices. Ordinary GlobalStandard unit pricing
+remains unverified.
 
-Obtain an exact regional model/SKU quote before selecting capacity. Once unit
+Obtain an exact East US model/SKU quote before selecting capacity. Once unit
 rates are verified, estimate billable input (including repeated history),
 cached input where applicable, output/reasoning, and any separate service or
 storage charges. For example, 100 requests with 1,000 billable input and 500
@@ -230,15 +260,14 @@ Provisioned throughput or another commitment is not proposed.
 
 1. Complete or explicitly resolve the source-audit gate, including restricted
    script behavior. Do not retry denied inspections.
-2. Obtain an approved monthly budget/usage envelope and verified regional
-   pricing. Decide whether to request Australia East quota for gpt-5.6-sol.
-   Submit no request without approval; a quota increase is not a deployment
-   approval or proof of service capacity.
-3. Confirm whole-path Australian processing, exact runtime permissions,
-   setup/runtime principal separation, resource names and networking.
-   Any investigation of another Australian region is not selection of that
-   region; an eventual fallback still requires explicit approval.
-4. Present the finalized model/version/Standard SKU/capacity, costs, resource
+2. Obtain an approved monthly budget/usage envelope and verified gpt-5-mini
+   GlobalStandard pricing. Select a capacity within freshly checked East US
+   quota; no quota increase is currently demonstrated to be necessary.
+3. Document US-geography storage and accepted global inference processing,
+   exact runtime permissions, setup/runtime principal separation, resource
+   names and networking. Retain the explicit East US choice for future
+   non-AI regional resources; do not silently substitute another location.
+4. Present the finalized gpt-5-mini version/GlobalStandard capacity, costs, resource
    mapping and RBAC for implementation approval. Keep this plan in Planning
    until these blockers are resolved.
 5. After approval, implement focused Bicep/azd and repeat catalog/quota checks.

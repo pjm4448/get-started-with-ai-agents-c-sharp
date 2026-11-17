@@ -161,8 +161,8 @@ The local Entra web sign-in registration is not automatically the Azure SDK
 caller. Identify the selected developer principal and any inherited privileges
 before testing runtime least privilege. The current text-only local proposal
 does not authorize any assignment; see the
-[deployment plan](../../.azure/deployment-plan.md) for current quota,
-Australia-only processing, pricing and permission gates.
+[deployment plan](../../.azure/deployment-plan.md) for current East US quota,
+accepted global processing, pricing and permission gates.
 
 ## SDK and architecture candidates
 
@@ -203,11 +203,15 @@ Australia-only processing, pricing and permission gates.
 
 ## Region and telemetry constraints
 
-Default both primary and AI locations to `australiaeast`. Validate exact model
-version, SKU, quotas, evaluator, Search capabilities and subscription access.
-An alternative AI location must be explicitly selected; document residency,
-latency, networking and cost. A global model deployment does not guarantee
-that inference stays in Australia.
+The original baseline defaulted both primary and AI locations to
+`australiaeast`. On 2026-11-17 the user explicitly selected `eastus` for both
+locations, including future non-AI regional resources, and gpt-5-mini with
+GlobalStandard. The user accepted global inference processing, superseding
+the earlier Australia-only requirement; do not claim East US-only processing.
+See [ADR 004](../decisions/004-australia-east-model-selection.md).
+Validate exact version, capacity, quotas, evaluator, Search capabilities and
+subscription access. Document data handling, latency, networking and cost;
+do not implement automatic runtime region fallback.
 
 The Application Insights instrumentation key identifies a destination and is
 not itself a security token, according to
