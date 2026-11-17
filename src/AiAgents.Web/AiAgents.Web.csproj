@@ -2,7 +2,9 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Identity.Web" />
+    <PackageReference Include="Azure.Identity" />
     <ProjectReference Include="..\AiAgents.Application\AiAgents.Application.csproj" />
+    <ProjectReference Include="..\AiAgents.Infrastructure\AiAgents.Infrastructure.csproj" />
     <ProjectReference Include="..\AiAgents.ServiceDefaults\AiAgents.ServiceDefaults.csproj" />
   </ItemGroup>
 

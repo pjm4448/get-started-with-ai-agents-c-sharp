@@ -1,9 +1,10 @@
 # Migration audit
 
 Status: **in progress**. This document is not a claim of functional parity or
-deployment readiness. Initial contracts and presentation components exist, but
-the remaining audit decisions must be resolved before agent integration,
-infrastructure implementation, or a parity claim.
+deployment readiness. User-approved bounded offline foundation and local-chat
+milestones do not close the remaining source audit gates. Complete those
+decisions before broader migration, infrastructure implementation or a parity
+claim.
 
 ## Baseline
 
@@ -30,7 +31,7 @@ not proof that every file's behavior was fully inspected.
 | Capability | Observed source | Migration and verification |
 | --- | --- | --- |
 | Agent | Startup retrieves an existing named/versioned agent or creates one with a configured model and a retrieval tool. | Separate privileged, repeatable setup from request handling. Verify new and existing agent behavior. |
-| Conversations | `/chat` uses a conversation and streams SSE; `/chat/history` lists recent items; the browser stores conversation and agent identifiers in cookies. | Offline-tested Foundry metadata ownership now gates send/history and is set at creation. UI, refresh, new chat and live isolation remain unverified; see [ownership](../decisions/005-conversation-ownership.md). |
+| Conversations | `/chat` uses a conversation and streams SSE; `/chat/history` lists recent items; the browser stores conversation and agent identifiers in cookies. | Metadata ownership gates send/history and is set at creation. Disabled-by-default UI has offline-tested creation, protected bookmarks, bounded restoration and New chat. Real browser refresh and live isolation remain unverified; see [workspace](../decisions/007-local-chat-workspace.md). |
 | Streaming | Deltas and completed messages include file or URL annotations; stream end is an explicit event. | Render typed incremental events, citations, completion, cancellation and safe errors; test interrupted streams. |
 | File Search | When Search is disabled, startup uploads bundled files into a vector store and attaches File Search. | Preserve document search and citations; make setup idempotent and report upload failures. |
 | AI Search | Optional setup creates blob storage content, index, data source, splitting/embedding skillset and two indexers. The agent tool requests `simple` queries despite vector and semantic index configuration and documentation describing hybrid search. | Preserve this actual mode and document any intentional extension to hybrid queries. Validate both indexers and citation output. |
@@ -167,22 +168,25 @@ runtime consumer; do not carry them forward without verifying purpose.
   adapter. Offline tests verify agent/version/conversation request mapping,
   text, both retrieval-tool item types, citations, usage, safe terminal errors,
   truncation, cancellation and no automatic POST retries. The Web application
-  does not register it. See the [SDK decision](../decisions/003-foundry-invocation-sdk.md).
+  registers it only with explicit Development opt-in; the committed default
+  remains disabled. See the [SDK decision](../decisions/003-foundry-invocation-sdk.md).
 - The same SDK now supplies conversation create/get/history behind an
   application authorization boundary. Ownership uses server-resolved Entra
   tenant/object claims and a stable opaque metadata marker. Missing, unowned
   and foreign conversations are denied without adoption. Offline tests cover
   identity changes, cross-tenant/user isolation and actual SDK pagination;
   local session revalidation and cancellation are now enforced through
-  Development-only server-side tickets. UI integration, live provider
-  verification and shared production sessions remain gates; see the
+  Development-only server-side tickets. Offline-tested UI now supports creation,
+  bounded history, streaming, cancellation and session-ended presentation.
+  Browser/live provider verification and shared production sessions remain gates; see the
   [session decision](../decisions/006-local-session-revocation.md).
 - `Azure.AI.Projects` remains a candidate for privileged setup, evaluations and
   red teaming. Verify its current version and exact API support before adding
   it; neither stable package numbering nor local transport tests prove service
   features are GA or regionally available.
-- `Azure.Identity`, `Azure.Search.Documents`, `Azure.Storage.Blobs`, and
-  OpenTelemetry/Azure Monitor are candidates. Use Microsoft.Extensions.AI only
+- `Azure.Identity` 1.21.0 supplies the opt-in Development credential. Search,
+  Blob and Azure Monitor SDK selection still requires verification; shared
+  ServiceDefaults already supplies OpenTelemetry. Use Microsoft.Extensions.AI only
   when it adds an actual abstraction; do not add Semantic Kernel without a
   source-demonstrated need.
 - Use local developer credentials for development and explicitly selected
@@ -214,5 +218,6 @@ on secret-bearing connection strings and infrastructure outputs.
    resource APIs, local and Azure role requirements, and existing-project reuse.
 3. Produce an environment-variable mapping, resource classifications, omitted
    items with justification, and initial ADRs.
-4. Review the completed audit before implementing code or Bicep. Real Azure
+4. Review the completed audit before the main migration or Bicep implementation;
+   bounded offline milestones do not establish source parity. Real Azure
    deployment, Entra changes and paid evaluations require separate approval.

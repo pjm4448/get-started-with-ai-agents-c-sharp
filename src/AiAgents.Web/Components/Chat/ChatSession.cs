@@ -18,7 +18,8 @@ public sealed class ChatSession
     public ChatSession(
         AgentConversationService conversationService,
         ILogger<ChatSession> logger,
-        string conversationId)
+        string conversationId,
+        IReadOnlyList<ChatMessage>? initialMessages = null)
     {
         ArgumentNullException.ThrowIfNull(conversationService);
         ArgumentNullException.ThrowIfNull(logger);
@@ -27,6 +28,11 @@ public sealed class ChatSession
         _conversationService = conversationService;
         _logger = logger;
         _conversationId = conversationId;
+        if (initialMessages is not null)
+        {
+            _messages.AddRange(initialMessages);
+        }
+
         _readOnlyMessages = _messages.AsReadOnly();
     }
 
@@ -41,6 +47,8 @@ public sealed class ChatSession
     public bool HasWarning { get; private set; }
 
     public bool HasStatusUpdate { get; private set; }
+
+    public bool AccessDenied { get; private set; }
 
     public UsageInformation? Usage { get; private set; }
 
@@ -64,6 +72,7 @@ public sealed class ChatSession
         {
             Status = ConversationStatus.Responding;
             HasWarning = false;
+            AccessDenied = false;
             HasStatusUpdate = false;
             Usage = null;
             _activeTools.Clear();
@@ -86,6 +95,13 @@ public sealed class ChatSession
                     request.IsCancellationRequested || exception.CancellationToken.IsCancellationRequested)
                 {
                     Status = ConversationStatus.Canceled;
+                    break;
+                }
+                catch (ConversationAccessException)
+                {
+                    AccessDenied = true;
+                    Status = ConversationStatus.Failed;
+                    _logger.LogWarning("Conversation access was denied.");
                     break;
                 }
                 catch (Exception exception)

@@ -66,10 +66,11 @@ through metadata requests, history pages and generation without retries.
 
 ## Consequences
 
-No new package, database, Azure resource or RBAC assignment is introduced.
-SDK types remain in Infrastructure. The Web host registers only the scoped
-identity resolver; the provider and application conversation service are
-**not yet connected to a page or endpoint**, and chat remains disabled.
+This ownership boundary introduces no database, Azure resource or RBAC
+assignment. SDK types remain in Infrastructure. The Web host now registers
+the provider and application conversation service only when chat is explicitly
+enabled in Development. The committed default remains disabled; see the
+[workspace decision](007-local-chat-workspace.md).
 
 Offline tests exercise actual SDK serialization, metadata retention,
 404-versus-other errors, pagination and cancellation. Application tests check
@@ -101,20 +102,20 @@ can leave an owned conversation whose ID was never returned; it is not
 automatically deleted or adopted. A timeout does not prove a remote operation
 had no effect. No automatic retries are configured.
 
-Conversation ownership survives reload only when the future UI retains the
-conversation ID and uses this service; browser refresh/new-chat flows and
-cross-replica live behavior have not been verified. History is enumerated
-lazily, not buffered here; UI paging and display-size limits remain to be
-selected during UI integration. Live Foundry behavior and the runtime role's
-conversation permissions remain unverified.
+The UI retains only a protected conversation ID in owner-separated per-tab
+storage and always restores through this service. It buffers at most 100
+messages, rejects overflow and rechecks the original owner/session before
+displaying restored history. New chat clears the local bookmark without
+deleting or adopting remote records. Offline component tests exercise these
+flows, not real browser refresh or cross-replica behavior. Live Foundry behavior
+and the runtime role's conversation permissions remain unverified.
 
 ## Follow-up actions
 
 Browser sign-in has been confirmed by the user. Reverify it after the local
 server-side ticket change, and verify session expiry/sign-out through the
-eventual interactive chat UI.
-Wire creation, history and streaming exclusively through the application
-service with a safe error boundary. Add component/end-to-end isolation and
-refresh tests, then verify metadata and least-privilege access against an
+interactive chat UI. Creation, history and streaming now use only the application
+service with a safe error boundary. Add end-to-end isolation and refresh tests,
+then verify metadata and least-privilege access against an
 approved Foundry project. Revisit a separate durable store if sharing,
 conversation discovery or richer access policies become required.

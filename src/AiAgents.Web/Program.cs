@@ -1,6 +1,7 @@
 using AiAgents.ServiceDefaults;
 using AiAgents.Web.Authentication;
 using AiAgents.Web.Components;
+using AiAgents.Web.Chat;
 using Microsoft.AspNetCore.Http.Connections;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +14,7 @@ if (!builder.Environment.IsDevelopment())
 
 builder.AddServiceDefaults();
 builder.Services.AddEntraSignIn(builder.Configuration, builder.Environment);
+builder.Services.AddAgentChat(builder.Configuration, builder.Environment);
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();
 

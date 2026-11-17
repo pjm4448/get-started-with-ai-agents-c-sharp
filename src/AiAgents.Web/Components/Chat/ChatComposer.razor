@@ -2,8 +2,11 @@
 
 <form @onsubmit="SubmitAsync" @onsubmit:preventDefault>
     <label for="chat-message">Message</label>
+    <p id="chat-message-help">Up to 4,000 characters.</p>
     <textarea id="chat-message"
               rows="4"
+              maxlength="@AiAgents.Web.Chat.AgentChatOptions.MessageCharacterLimit"
+              aria-describedby="chat-message-help"
               @bind:get="Value"
               @bind:set="SetValueAsync"
               @bind:event="oninput"
@@ -41,7 +44,7 @@
     private bool CanCompose => IsAvailable && ValueChanged.HasDelegate && OnSubmit.HasDelegate;
 
     private bool CanSubmit => CanCompose && !IsResponding && !_submitting &&
-        !string.IsNullOrWhiteSpace(Value);
+        !string.IsNullOrWhiteSpace(Value) && Value.Length <= AiAgents.Web.Chat.AgentChatOptions.MessageCharacterLimit;
 
     private Task SetValueAsync(string value) => ValueChanged.InvokeAsync(value);
 
@@ -56,7 +59,6 @@
         try
         {
             await OnSubmit.InvokeAsync(Value);
-            await ValueChanged.InvokeAsync(string.Empty);
         }
         finally
         {

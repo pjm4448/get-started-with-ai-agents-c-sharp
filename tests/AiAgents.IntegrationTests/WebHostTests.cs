@@ -67,9 +67,50 @@ public sealed class WebHostTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("You are signed in.", html);
-        Assert.Contains("Chat is unavailable until Foundry agent integration is implemented.", html);
+        Assert.Contains("Chat is unavailable until an approved Foundry agent is configured and chat is explicitly enabled.", html);
         Assert.Matches("<textarea[^>]*disabled", html);
         Assert.Contains("Sign out of this app", html);
+        Assert.Null(factory.Services.GetService<IAgentClient>());
+        Assert.Null(factory.Services.GetService<IConversationStore>());
+    }
+
+    [Fact]
+    public async Task EnabledChatWithMissingFoundryConfigurationFailsAtStartup()
+    {
+        await using var factory = new TestWebHost(chatEnabled: true);
+
+        var exception = Assert.Throws<OptionsValidationException>(() => CreateClient(factory));
+
+        Assert.Contains("Enabled chat requires Foundry:ProjectEndpoint", exception.Message);
+    }
+
+    [Theory]
+    [InlineData("http://foundry.example/api/projects/test")]
+    [InlineData("https://foundry.example/api/projects/test?unexpected=value")]
+    public async Task EnabledChatWithInvalidEndpointFailsAtStartup(string endpoint)
+    {
+        await using var factory = new TestWebHost(chatEnabled: true, foundryConfigured: true, projectEndpoint: endpoint);
+
+        var exception = Assert.Throws<OptionsValidationException>(() => CreateClient(factory));
+
+        Assert.Contains("Enabled chat requires Foundry:ProjectEndpoint", exception.Message);
+        Assert.DoesNotContain(endpoint, exception.Message);
+    }
+
+    [Fact]
+    public async Task EnabledChatCanPrerenderWithoutAccessingBrowserStorageOrFoundry()
+    {
+        await using var factory = new TestWebHost(chatEnabled: true, foundryConfigured: true);
+        using var client = CreateClient(factory);
+        client.DefaultRequestHeaders.Add("Cookie", await CreateSessionCookieAsync(factory));
+
+        using var response = await client.GetAsync("/");
+        string html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Loading conversation...", html);
+        Assert.DoesNotContain("Chat is unavailable", html);
+        Assert.Matches("<textarea[^>]*disabled", html);
     }
 
     [Theory]
@@ -262,7 +303,9 @@ public sealed class WebHostTests
         return Assert.IsType<ClaimsPrincipal>(result.Principal);
     }
 
-    private sealed class TestWebHost(string environment = "Development") : WebApplicationFactory<Program>
+    private sealed class TestWebHost(
+        string environment = "Development", bool chatEnabled = false, bool foundryConfigured = false,
+        string? projectEndpoint = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -270,6 +313,10 @@ public sealed class WebHostTests
             builder.UseSetting("Entra:TenantId", "11111111-1111-4111-8111-111111111111");
             builder.UseSetting("Entra:ClientId", "22222222-2222-4222-8222-222222222222");
             builder.UseSetting("Entra:CertificateThumbprint", new string('A', 40));
+            builder.UseSetting("Chat:Enabled", chatEnabled.ToString());
+            builder.UseSetting("Foundry:ProjectEndpoint", foundryConfigured ? projectEndpoint ?? "https://foundry.example/api/projects/test" : "");
+            builder.UseSetting("Foundry:AgentName", foundryConfigured ? "test-agent" : "");
+            builder.UseSetting("Foundry:AgentVersion", foundryConfigured ? "1" : "");
             builder.ConfigureServices(services =>
                 services.PostConfigure<OpenIdConnectOptions>(
                     OpenIdConnectDefaults.AuthenticationScheme,

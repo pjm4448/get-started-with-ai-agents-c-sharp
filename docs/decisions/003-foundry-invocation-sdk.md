@@ -26,9 +26,19 @@ Do not grant runtime agent-authoring privileges or add the broader
 
 Require an injected Azure `TokenCredential` and an application-owned HttpClient.
 Disable SDK retries for generative POSTs and disable HTTP message/content
-logging. The eventual host must select developer credentials locally and an
-explicit managed identity in Azure. The host must not add retries around this
-adapter or use an HTTP handler that retries POSTs.
+logging. The Development host selects `DefaultAzureCredential` with
+developer-tool credentials only; environment-secret, workload-identity,
+managed-identity, interactive-browser and broker credentials are excluded.
+Azure runtime must eventually select an explicit managed identity. The host
+must not add retries around this adapter or use an HTTP handler that retries POSTs.
+
+The opt-in Web registration uses a DI-owned singleton `HttpClient` with a
+`SocketsHttpHandler` and a five-minute pooled connection lifetime. It is
+deliberately outside the shared HTTP-factory resilience pipeline, whose
+standard attempt/total timeouts are inappropriate for this stream. Transport
+timeout is infinite; the workspace supplies a cancellable, bounded operation
+deadline. SDK retries remain zero. No additional experimental resilience API
+or warning suppression is used.
 
 Use `ProjectOpenAIClient` to construct the Responses and conversation clients
 with the same injected transport, authentication and no-retry/content-logging
@@ -41,8 +51,9 @@ for the application authorization boundary. These APIs share the isolated
 The adapter does not create Azure resources, agents, indexes or evaluations.
 It does not accept a browser-supplied project endpoint. Its low-level interfaces
 are not authorization boundaries: callers must use `AgentConversationService`,
-not invoke the provider directly. It remains disconnected from the Web
-application until the remaining integration and source audit gates are resolved.
+not invoke the provider directly. Development-only UI wiring is now available
+behind `Chat:Enabled=false`; enabling it still requires approved configuration
+and live verification. Production startup remains blocked.
 
 | Capability | SDK / abstraction | Status | Reason | Rejected alternative |
 | --- | --- | --- | --- | --- |
@@ -86,8 +97,9 @@ Review the two upstream changelogs on each intentional upgrade. Once a stable
 Responses surface is available, remove the scoped diagnostics and rerun the
 request/stream tests. If the surface is removed or materially changed, keep the
 application contract and replace only the Infrastructure implementation.
-Connect the offline-tested ownership boundary, configured credentials,
-resource selection, timeouts and live verification before enabling the UI.
+The ownership boundary, developer credential selection and UI timeouts are
+wired and tested offline. Complete source audit gates, approved resource/agent
+selection and live verification before claiming an operational integration.
 
 ## References
 

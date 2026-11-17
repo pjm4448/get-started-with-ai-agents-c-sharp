@@ -1,28 +1,29 @@
 # Get Started with AI Agents for C#
 
 This migration is in progress. The web application now starts in Development
-with Entra sign-in required for its pages and Blazor connections. Chat remains
-disabled until Foundry agent integration is implemented; there is no simulated
-agent fallback. Production startup remains explicitly blocked until agent
+with Entra sign-in required for its pages and Blazor connections. Ownership-aware
+chat is wired behind `Chat:Enabled=false` and tested offline; there is no
+simulated agent fallback. Production startup remains explicitly blocked until
 integration and deployment validation are complete.
 
-The current solution contains typed agent-stream contracts and preliminary
-Blazor transcript and composer components. Citations are shown as labels only;
-they are not yet connected to an agent or conversation history.
+The Blazor chat supports owned conversation creation, authorized history
+restoration, incremental responses, tool progress, citation labels, usage,
+cancellation and session-ended states. Agent text is rendered as encoded plain
+text, not Markdown or HTML. Citation URLs are not opened.
 
 An offline-tested [Foundry adapter](src/AiAgents.Infrastructure/FoundryAgentClient.cs)
 now invokes an existing, version-pinned agent and maps text, retrieval-tool
 progress, citations, usage and terminal failures to application events. Its
 tests use the real SDK with an in-memory HTTP transport, not live model calls.
-It is **not registered in the web host**. An offline-tested application boundary
+It is registered only when chat is explicitly enabled in Development. The application boundary
 now creates conversations with an opaque Entra tenant/user ownership marker
 in Foundry metadata and checks that marker before sending messages or reading
 history. Missing, unowned and other-user conversations are uniformly denied;
 legacy conversations are never adopted. See the
 [ownership decision and limitations](docs/decisions/005-conversation-ownership.md).
-Ownership-aware UI wiring, credential selection, source audit gates,
-project/model configuration and live service verification remain prerequisites
-for enabling chat.
+Source audit gates, approved project/model/agent configuration, required Azure
+permissions and live service verification remain prerequisites for a working
+live chat. No Foundry resources or agent have been provisioned by this milestone.
 
 The stable Foundry package still exposes experimental Responses APIs. Their
 isolated use was explicitly approved; see the
@@ -84,8 +85,47 @@ dotnet run --project src\AiAgents.Web --configuration Release --launch-profile h
 
 Open `https://localhost:7124`. Use the HTTPS profile to match the registered
 sign-in redirect URI. The development HTTPS certificate must be trusted;
-do not bypass certificate validation. Successful sign-in currently displays
-the disabled chat shell, not a working agent.
+do not bypass certificate validation. With the committed configuration,
+successful sign-in displays the disabled chat shell, not a working agent.
+
+### Optional Foundry configuration
+
+Leave chat disabled until the Azure project, agent, permissions, processing
+residency and costs are approved. After that setup, supply the existing
+project's HTTPS endpoint, agent name and explicit agent version through
+user-secrets or environment variables:
+
+| Configuration | Environment variable | Purpose |
+| --- | --- | --- |
+| `Foundry:ProjectEndpoint` | `Foundry__ProjectEndpoint` | Existing project endpoint; HTTPS without credentials, query or fragment |
+| `Foundry:AgentName` | `Foundry__AgentName` | Reviewed existing agent; no runtime authoring |
+| `Foundry:AgentVersion` | `Foundry__AgentVersion` | Explicit pinned agent version |
+| `Chat:Enabled` | `Chat__Enabled` | Defaults to `false`; explicitly opt in only after setup approval |
+| `Chat:OperationTimeout` | `Chat__OperationTimeout` | Defaults to `00:02:00`; positive and at most two minutes |
+
+Enabled chat fails startup if required Foundry options are missing or invalid.
+The credential uses `DefaultAzureCredential` with developer-tool credentials,
+such as Azure CLI sign-in to the configured tenant. Environment-secret,
+workload-identity, managed-identity, interactive-browser and broker credentials
+are excluded for this Development-only path. Website sign-in does not sign in
+the Azure SDK, and neither sign-in grants missing Foundry permissions.
+There is no production credential fallback.
+
+Opening chat or selecting **New chat** does not create a remote conversation.
+The first valid message creates one. The browser stores only its protected ID
+in per-tab session storage, separated by the server-resolved owner. Refresh
+restores up to 100 messages after authorization; longer histories show an
+explicit error instead of silently truncating. Messages are limited to 4,000
+characters. **New chat** clears the saved ID and transcript, never remote
+history. Storage must be available; failures are visible rather than falling
+back to an untracked conversation.
+
+**Stop response**, timeout, sign-out or session expiry preserve partial output.
+Interrupted or failed operations are never automatically retried; start a new
+chat before sending again. Cancellation cannot guarantee remote work or billing
+stops. No browser storage or provider operation runs during prerender.
+See the [chat workspace decision](docs/decisions/007-local-chat-workspace.md)
+for reconnect, storage and verification limitations.
 
 The HTTPS host has been smoke-tested with the local configuration: `/alive`
 and `/health` return 200, and an anonymous page request redirects to Entra.
@@ -93,8 +133,9 @@ These probes currently check host health, not Foundry connectivity. Integration
 tests also verify protected Blazor negotiation, authenticated page rendering
 through real cookie-handler sign-in, antiforgery-protected local sign-out,
 copied-cookie rejection after sign-out, expired-session rejection, actual
-WebSocket closure at session expiration, and blocked Production startup without
-calling live Azure services.
+WebSocket closure at session expiration, disabled-chat isolation, enabled-chat
+configuration validation, provider-free prerender and blocked Production
+startup without calling live Azure services.
 
 The Aspire AppHost composes the web project for local development.
 The [ServiceDefaults library](src/AiAgents.ServiceDefaults/Extensions.cs) now
@@ -123,6 +164,12 @@ Run the current tests with:
 ```shell
 dotnet test get-started-with-ai-agents-c-sharp.sln --configuration Release
 ```
+
+The suite includes bUnit component tests for the ownership-aware chat workspace,
+streaming, cancellation, session ending, exact message/history limits, protected
+bookmarks and safe rendering. These tests are not browser or live Foundry
+verification. Recheck real browser sign-in/sign-out after the session-store
+update; paid chat and Playwright journeys remain unverified.
 
 The initial pull-request workflow restores locked dependencies, builds, tests,
 checks formatting, scans repository files for common Python artifacts and

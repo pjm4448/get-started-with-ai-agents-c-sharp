@@ -69,8 +69,10 @@ ticket and is not revoked. The Microsoft SSO session is not ended.
 
 No package, certificate, Entra registration, Azure resource or RBAC assignment
 is added. The store is registered only in Development. Production startup
-remains blocked. The provider and application conversation service remain
-disconnected from pages/endpoints; chat is still disabled.
+remains blocked. The provider and application conversation service now have
+Development-only UI wiring behind a disabled-by-default feature gate. The
+workspace observes session ending while idle or streaming, disables further
+input and offers a full-page sign-in link.
 
 Offline tests cover actual cookie-handler sign-in and sign-out, replay of the
 original cookie after sign-out, expired sessions, unadopted legacy cookies,
@@ -101,9 +103,9 @@ agent configuration.
 
 ## Follow-up actions
 
-Repeat browser sign-in/sign-out with the new ticket store. Wire the UI
-exclusively through the ownership-aware application service, with clear
-session-ended/sign-in-again presentation. Add browser/component tests for
-multiple tabs, expiry, refresh and new chat. Select the production session
+Repeat browser sign-in/sign-out with the new ticket store. Offline component
+tests now cover session-ended presentation, cancellation, restoration and new
+chat through the ownership-aware service. Add browser tests for multiple tabs,
+expiry and actual refresh. Select the production session
 store, shared data-protection configuration and cross-replica cancellation
 before enabling production hosting.

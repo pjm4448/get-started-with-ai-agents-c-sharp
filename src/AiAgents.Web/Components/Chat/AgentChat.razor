@@ -1,0 +1,67 @@
+@namespace AiAgents.Web.Components.Chat
+@using AiAgents.Web.Chat
+@implements IAsyncDisposable
+@inject ChatWorkspace Workspace
+
+<section aria-label="Agent chat" aria-busy="@Workspace.IsBusy.ToString().ToLowerInvariant()">
+    @if (!Workspace.IsInitialized)
+    {
+        <p role="status">Loading conversation...</p>
+    }
+    @if (Workspace.Error is { } error)
+    {
+        <p role="alert">@error</p>
+    }
+    @if (Workspace.SessionEnded)
+    {
+        <a href="/" data-enhance-nav="false">Sign in again</a>
+    }
+    <button type="button" disabled="@(!Workspace.CanStartNewChat)" @onclick="Workspace.StartNewChatAsync">New chat</button>
+    <ConversationTranscript Messages="@(Workspace.Session?.Messages ?? [])"
+                            Status="@(Workspace.Session?.Status ?? ConversationStatus.Idle)" />
+    @if (Workspace.Session is { } session)
+    {
+        @if (session.ActiveToolCount > 0)
+        {
+            <p role="status" aria-live="polite">Tools running: @session.ActiveToolCount</p>
+        }
+        @if (session.HasWarning)
+        {
+            <p role="status">The agent reported a warning.</p>
+        }
+        @if (session.Usage is { } usage)
+        {
+            <p>Tokens: @usage.InputTokens input, @usage.OutputTokens output.</p>
+        }
+    }
+    <ChatComposer @bind-Value="_draft" IsAvailable="@(Workspace.CanSend || IsResponding)"
+                  IsResponding="IsResponding" OnSubmit="SendAsync" OnCancel="Workspace.CancelAsync" />
+</section>
+
+@code {
+    private string _draft = string.Empty;
+    private bool _disposed;
+    private bool IsResponding => Workspace.IsBusy && Workspace.Session?.Status == ConversationStatus.Responding;
+
+    protected override void OnInitialized() => Workspace.Changed += RefreshAsync;
+
+    protected override Task OnAfterRenderAsync(bool firstRender) =>
+        firstRender ? Workspace.InitializeAsync() : Task.CompletedTask;
+
+    private async Task SendAsync(string message)
+    {
+        if (await Workspace.SendAsync(message))
+        {
+            _draft = string.Empty;
+        }
+    }
+
+    private Task RefreshAsync() => _disposed ? Task.CompletedTask : InvokeAsync(StateHasChanged);
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        Workspace.Changed -= RefreshAsync;
+        await Workspace.DisposeAsync();
+    }
+}

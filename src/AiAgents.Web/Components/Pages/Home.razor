@@ -1,12 +1,20 @@
 ﻿@page "/"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using AiAgents.Web.Components.Chat
+@inject Microsoft.Extensions.Options.IOptions<AiAgents.Web.Chat.AgentChatOptions> ChatOptions
 
 <PageTitle>Get Started with AI Agents</PageTitle>
 
 <main class="chat-page">
     <h1>Get Started with AI Agents</h1>
-    <p>You are signed in. Chat is unavailable until Foundry agent integration is implemented.</p>
-    <ConversationTranscript Messages="Array.Empty<ChatMessage>()" />
-    <ChatComposer />
+    @if (ChatOptions.Value.Enabled)
+    {
+        <AgentChat />
+    }
+    else
+    {
+        <p>You are signed in. Chat is unavailable until an approved Foundry agent is configured and chat is explicitly enabled.</p>
+        <ConversationTranscript Messages="Array.Empty<ChatMessage>()" />
+        <ChatComposer />
+    }
 </main>
