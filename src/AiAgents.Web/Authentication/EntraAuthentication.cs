@@ -11,14 +11,46 @@ public static class EntraAuthentication
 {
     public static IServiceCollection AddEntraSignIn(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(environment);
 
         string tenantId = RequiredId(configuration, "Entra:TenantId");
         string clientId = RequiredId(configuration, "Entra:ClientId");
-        string managedIdentityClientId = RequiredId(configuration, "Entra:ManagedIdentityClientId");
+        CredentialDescription credential;
+        if (environment.IsDevelopment())
+        {
+            string? thumbprint = configuration["Entra:CertificateThumbprint"];
+            if (thumbprint is null || thumbprint.Length != 40 || !thumbprint.All(Uri.IsHexDigit))
+            {
+                throw new InvalidOperationException(
+                    "Entra:CertificateThumbprint must be a 40-character hexadecimal certificate thumbprint in Development.");
+            }
+
+            credential = new CredentialDescription
+            {
+                SourceType = CredentialSource.StoreWithThumbprint,
+                CertificateStorePath = "CurrentUser/My",
+                CertificateThumbprint = thumbprint
+            };
+        }
+        else
+        {
+            if (!string.IsNullOrEmpty(configuration["Entra:CertificateThumbprint"]))
+            {
+                throw new InvalidOperationException(
+                    "Entra:CertificateThumbprint is permitted only in Development. Use managed identity in other environments.");
+            }
+
+            credential = new CredentialDescription
+            {
+                SourceType = CredentialSource.SignedAssertionFromManagedIdentity,
+                ManagedIdentityClientId = RequiredId(configuration, "Entra:ManagedIdentityClientId")
+            };
+        }
 
         services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
             .AddMicrosoftIdentityWebApp(
@@ -30,14 +62,7 @@ public static class EntraAuthentication
                     options.ResponseType = "code";
                     options.UsePkce = true;
                     options.SaveTokens = false;
-                    options.ClientCredentials =
-                    [
-                        new CredentialDescription
-                        {
-                            SourceType = CredentialSource.SignedAssertionFromManagedIdentity,
-                            ManagedIdentityClientId = managedIdentityClientId
-                        }
-                    ];
+                    options.ClientCredentials = [credential];
                 },
                 options => options.Cookie.SecurePolicy = CookieSecurePolicy.Always)
             .EnableTokenAcquisitionToCallDownstreamApi()

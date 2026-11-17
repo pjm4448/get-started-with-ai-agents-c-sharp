@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Identity.Abstractions;
 using Microsoft.Identity.Web;
 
@@ -30,7 +32,7 @@ public sealed class EntraAuthenticationTests
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
 
         var error = Assert.Throws<InvalidOperationException>(
-            () => new ServiceCollection().AddEntraSignIn(configuration));
+            () => new ServiceCollection().AddEntraSignIn(configuration, new TestEnvironment()));
 
         Assert.Contains(key, error.Message);
     }
@@ -42,7 +44,7 @@ public sealed class EntraAuthenticationTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<IConfiguration>(configuration);
-        services.AddEntraSignIn(configuration);
+        services.AddEntraSignIn(configuration, new TestEnvironment());
         using var provider = services.BuildServiceProvider();
 
         var identity = provider.GetRequiredService<IOptionsMonitor<MicrosoftIdentityOptions>>()
@@ -82,4 +84,68 @@ public sealed class EntraAuthenticationTests
         ["Entra:ClientId"] = ClientId,
         ["Entra:ManagedIdentityClientId"] = IdentityId
     };
+
+    [Fact]
+    public void DevelopmentUsesOnlyTheConfiguredCertificate()
+    {
+        var settings = ValidSettings();
+        settings.Remove("Entra:ManagedIdentityClientId");
+        settings["Entra:CertificateThumbprint"] = new string('A', 40);
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddEntraSignIn(configuration, new TestEnvironment { EnvironmentName = Environments.Development });
+        using var provider = services.BuildServiceProvider();
+
+        var identity = provider.GetRequiredService<IOptionsMonitor<MicrosoftIdentityOptions>>()
+            .Get(OpenIdConnectDefaults.AuthenticationScheme);
+        Assert.NotNull(identity.ClientCredentials);
+        var credential = Assert.Single(identity.ClientCredentials);
+        Assert.Equal(CredentialSource.StoreWithThumbprint, credential.SourceType);
+        Assert.Equal("CurrentUser/My", credential.CertificateStorePath);
+        Assert.Equal(new string('A', 40), credential.CertificateThumbprint);
+        Assert.Null(credential.ManagedIdentityClientId);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("invalid")]
+    [InlineData("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ")]
+    public void DevelopmentRejectsMissingOrInvalidCertificate(string? thumbprint)
+    {
+        var settings = ValidSettings();
+        settings["Entra:CertificateThumbprint"] = thumbprint;
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            new ServiceCollection().AddEntraSignIn(
+                configuration, new TestEnvironment { EnvironmentName = Environments.Development }));
+
+        Assert.Contains("Entra:CertificateThumbprint", error.Message);
+    }
+
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public void NonDevelopmentRejectsCertificateConfiguration(string environmentName)
+    {
+        var settings = ValidSettings();
+        settings["Entra:CertificateThumbprint"] = new string('A', 40);
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            new ServiceCollection().AddEntraSignIn(
+                configuration, new TestEnvironment { EnvironmentName = environmentName }));
+
+        Assert.Contains("only in Development", error.Message);
+    }
+
+    private sealed class TestEnvironment : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = Environments.Production;
+        public string ApplicationName { get; set; } = "Tests";
+        public string ContentRootPath { get; set; } = string.Empty;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
 }

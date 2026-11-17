@@ -1,8 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Identity.Web" />
     <ProjectReference Include="..\AiAgents.Application\AiAgents.Application.csproj" />
+    <ProjectReference Include="..\AiAgents.ServiceDefaults\AiAgents.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -10,6 +11,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <UserSecretsId>d2ef2588-456e-4097-a282-f6202d1d47a6</UserSecretsId>
   </PropertyGroup>
 
 </Project>
