@@ -31,7 +31,7 @@ not proof that every file's behavior was fully inspected.
 | Capability | Observed source | Migration and verification |
 | --- | --- | --- |
 | Agent | Startup retrieves an existing named/versioned agent or creates one with a configured model and a retrieval tool. | Separate privileged, repeatable setup from request handling. Verify new and existing agent behavior. |
-| Conversations | `/chat` uses a conversation and streams SSE; `/chat/history` lists recent items; the browser stores conversation and agent identifiers in cookies. | Metadata ownership gates send/history and is set at creation. Disabled-by-default UI has offline-tested creation, protected bookmarks, bounded restoration and New chat. Real browser refresh and live isolation remain unverified; see [workspace](../decisions/007-local-chat-workspace.md). |
+| Conversations | `/chat` uses a conversation and streams SSE; `/chat/history` lists recent items; the browser stores conversation and agent identifiers in cookies. | Metadata ownership gates send/history and is set at creation. Disabled-by-default UI has offline-tested creation, protected bookmarks, bounded restoration and New chat. Chromium verifies refresh, cancellation, cross-tab sign-out and bookmark separation with test-only sessions/provider fakes; live isolation remains unverified. See [testing](../testing.md). |
 | Streaming | Deltas and completed messages include file or URL annotations; stream end is an explicit event. | Render typed incremental events, citations, completion, cancellation and safe errors; test interrupted streams. |
 | File Search | When Search is disabled, startup uploads bundled files into a vector store and attaches File Search. | Preserve document search and citations; make setup idempotent and report upload failures. |
 | AI Search | Optional setup creates blob storage content, index, data source, splitting/embedding skillset and two indexers. The agent tool requests `simple` queries despite vector and semantic index configuration and documentation describing hybrid search. | Preserve this actual mode and document any intentional extension to hybrid queries. Validate both indexers and citation output. |
@@ -178,7 +178,8 @@ runtime consumer; do not carry them forward without verifying purpose.
   local session revalidation and cancellation are now enforced through
   Development-only server-side tickets. Offline-tested UI now supports creation,
   bounded history, streaming, cancellation and session-ended presentation.
-  Browser/live provider verification and shared production sessions remain gates; see the
+  Chromium journeys now verify main interactions with synthetic sessions and
+  provider fakes. Real Entra/live provider verification and shared production sessions remain gates; see the
   [session decision](../decisions/006-local-session-revocation.md).
 - `Azure.AI.Projects` remains a candidate for privileged setup, evaluations and
   red teaming. Verify its current version and exact API support before adding

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using AiAgents.Application;
@@ -162,6 +163,45 @@ public sealed class AgentChatTests
         Assert.Equal(streaming ? 1 : 0, test.Backend.SendCalls);
     }
 
+    [Fact]
+    public async Task SessionEndedMessageWinsWhenTheSessionWatcherHasNotResumed()
+    {
+        await using var test = new ChatTest();
+        test.Backend.BlockStream = true;
+        var deferred = new DeferredSynchronizationContext();
+        var previous = SynchronizationContext.Current;
+        Task initialize;
+        try
+        {
+            SynchronizationContext.SetSynchronizationContext(deferred);
+            initialize = test.Workspace.InitializeAsync();
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+
+        await initialize;
+        try
+        {
+            Task send = test.Workspace.SendAsync("Hello");
+            await test.Backend.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            await test.Ended.CancelAsync();
+            await send.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.True(test.Workspace.SessionEnded);
+            Assert.Equal("Your application session has ended. Sign in again to continue.", test.Workspace.Error);
+            Assert.False(test.Workspace.CanSend);
+        }
+        finally
+        {
+            await test.Ended.CancelAsync();
+            await deferred.Posted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            deferred.Drain();
+        }
+    }
+
     [Theory]
     [InlineData(4000, true)]
     [InlineData(4001, false)]
@@ -314,6 +354,26 @@ public sealed class AgentChatTests
         Assert.Equal("conv_private", await storage.GetAsync("owner", default));
         context.JSInterop.Setup<string>("sessionStorage.getItem", "aiagents:conversation:v1:other").SetResult(ciphertext);
         await Assert.ThrowsAsync<CryptographicException>(() => storage.GetAsync("other", default));
+    }
+
+    private sealed class DeferredSynchronizationContext : SynchronizationContext
+    {
+        private readonly ConcurrentQueue<Action> _callbacks = new();
+        public TaskCompletionSource Posted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override void Post(SendOrPostCallback callback, object? state)
+        {
+            _callbacks.Enqueue(() => callback(state));
+            Posted.TrySetResult();
+        }
+
+        public void Drain()
+        {
+            while (_callbacks.TryDequeue(out var callback))
+            {
+                callback();
+            }
+        }
     }
 
     private sealed class ChatTest : IAsyncDisposable

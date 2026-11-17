@@ -21,8 +21,13 @@ jobs:
         run: dotnet restore get-started-with-ai-agents-c-sharp.sln --locked-mode
       - name: Build
         run: dotnet build get-started-with-ai-agents-c-sharp.sln --configuration Release --no-restore
+      - name: Install Chromium for offline browser tests
+        shell: pwsh
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_GC: '1'
+        run: '& (Join-Path tests AiAgents.EndToEndTests bin Release net10.0 playwright.ps1) install --with-deps --only-shell chromium'
       - name: Test
-        run: dotnet test get-started-with-ai-agents-c-sharp.sln --configuration Release --no-build --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
+        run: dotnet test get-started-with-ai-agents-c-sharp.sln --configuration Release --no-build --no-restore --logger "trx;LogFileName=tests.trx"
       - name: Verify formatting
         run: dotnet format get-started-with-ai-agents-c-sharp.sln --verify-no-changes --no-restore
       - name: Test zero-Python check
@@ -38,6 +43,6 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-results
-          path: TestResults/*.trx
+          path: tests/**/TestResults/*.trx
           if-no-files-found: warn
           retention-days: 7

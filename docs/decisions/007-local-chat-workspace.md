@@ -48,6 +48,9 @@ chat before another send. There are no automatic generative retries, including
 after a connection interruption. Session ending also cancels local work,
 disables input and offers a full-page sign-in link. Disposal cancels active
 work and unsubscribes rendering callbacks.
+Operation completion rechecks session ending before its final notification,
+so delayed watcher scheduling cannot leave a generic cancellation message
+in place of the sign-in-again action.
 
 Render untrusted text and citation labels with Razor encoding, not raw HTML or
 Markdown. Announce loading, streaming, tool progress, errors and session ending
@@ -74,6 +77,9 @@ boundary using fake provider/storage dependencies, plus actual bookmark
 protection with fake JavaScript interop. Host tests verify configuration
 failure, default-disabled isolation and enabled prerender without contacting
 Foundry. No mock provider is registered in the application.
+Test-project-only Playwright fixtures now exercise the real HTTPS host and
+Blazor circuits with synthetic cookie sessions and fake provider operations;
+see [testing](../testing.md).
 
 The local developer command and Entra registration are unchanged. Existing
 browser sign-in should be reverified after the server-side ticket change.
@@ -96,14 +102,16 @@ billing stops.
 
 Blazor reconnect can resume a retained circuit and its current work, rather
 than starting another request. A new circuit restores saved history. Offline
-tests do not establish browser reconnect, focus behavior, screen-reader
-usability, live stream timing or service compatibility.
+browser tests establish the main keyboard submission path, refresh, cancellation
+and cross-tab sign-out. They do not establish network-interruption/reconnect
+behavior, screen-reader usability, live stream timing or service compatibility.
 
 ## Follow-up actions
 
 Reverify browser sign-in/sign-out. Complete source audit gates and approve
 project/model/agent configuration, costs and processing residency before live
 activation. Verify Foundry permissions and denial behavior in the approved
-environment. Add focused Playwright refresh, reconnect, cancellation and
-multi-tab journeys. Implement production shared sessions, data protection and
-cross-circuit concurrency policy before production hosting.
+environment. Focused Playwright refresh, cancellation, multi-tab sign-out and
+owner-separated bookmark journeys now pass offline. Add reconnect coverage and
+broader accessibility verification. Implement production shared sessions, data
+protection and cross-circuit concurrency policy before production hosting.

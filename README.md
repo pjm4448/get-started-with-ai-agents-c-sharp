@@ -159,21 +159,35 @@ open investigation items, security decisions and remaining work.
 
 ## Validation
 
-Run the current tests with:
+Run unit, component and integration tests without a browser installation:
 
 ```shell
-dotnet test get-started-with-ai-agents-c-sharp.sln --configuration Release
+dotnet test get-started-with-ai-agents-c-sharp.sln --configuration Release --filter "Category!=Browser"
 ```
 
-The suite includes bUnit component tests for the ownership-aware chat workspace,
-streaming, cancellation, session ending, exact message/history limits, protected
-bookmarks and safe rendering. These tests are not browser or live Foundry
-verification. Recheck real browser sign-in/sign-out after the session-store
-update; paid chat and Playwright journeys remain unverified.
+For the complete suite, build once and install the pinned Playwright Chromium
+headless runtime from PowerShell:
 
-The initial pull-request workflow restores locked dependencies, builds, tests,
+```powershell
+dotnet build get-started-with-ai-agents-c-sharp.sln --configuration Release
+$env:PLAYWRIGHT_SKIP_BROWSER_GC = '1'
+& .\tests\AiAgents.EndToEndTests\bin\Release\net10.0\playwright.ps1 install --only-shell chromium
+dotnet test get-started-with-ai-agents-c-sharp.sln --configuration Release --no-build --no-restore
+```
+
+The browser download does not require Azure or a local Entra certificate.
+The suite includes bUnit coverage and five real Chromium journeys for keyboard
+submission, streaming, refresh/history, cancellation, safe failures, cross-tab
+sign-out and owner-separated bookmarks. Browser tests use an isolated loopback
+HTTPS host, real application cookies and test-project-only provider fakes.
+They do not verify real Entra sign-in or live Foundry compatibility. See
+[testing](docs/testing.md) for setup, isolation and remaining checks.
+
+The initial pull-request workflow restores locked dependencies, builds, installs
+the pinned Chromium runtime, runs all four test projects,
 checks formatting, scans repository files for common Python artifacts and
-integrations, and reports vulnerable packages. The scan covers tracked and
+integrations, reports vulnerable packages and publishes separate per-project
+TRX results. The scan covers tracked and
 unignored files, excluding the historical migration documents and scanner
 fixtures. It does not inspect container image layers. Infrastructure,
 container, and deployment checks are not yet implemented.

@@ -223,6 +223,11 @@ public sealed class ChatWorkspace(
         finally
         {
             IsBusy = false;
+            if (!_disposed && SessionEnded)
+            {
+                SetSessionEnded();
+            }
+
             await NotifyAsync();
         }
     }

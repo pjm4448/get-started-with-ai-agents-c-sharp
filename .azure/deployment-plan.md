@@ -33,7 +33,9 @@ File Search and optional Azure AI Search are both in scope.
 - Approved non-exportable signing certificate exists in the current user's
   personal store; only its public certificate was uploaded to Entra.
 - Verified that the registration has no client secrets or requested API
-  permissions. Local signing was verified; browser sign-in was not.
+  permissions. The user verified real browser sign-in before the server-side
+  ticket-store update; reverify that flow after updating. Offline browser tests
+  use synthetic application sessions, not real Entra sign-in.
 - The user selected preparation of a **new** Foundry project in Australia East,
   rather than reuse of an existing project. No project, resource group, azd
   environment or model deployment has been created for this selection.
@@ -49,7 +51,9 @@ File Search and optional Azure AI Search are both in scope.
   login or changing the active subscription.
 - Isolated experimental Responses SDK usage was explicitly approved and
   documented in [ADR 003](../docs/decisions/003-foundry-invocation-sdk.md).
-- The adapter is offline-tested and is not registered in the Web host.
+- The adapter and ownership-aware UI are offline-tested. Provider registration
+  is available only through explicit Development opt-in; the committed chat
+  default remains disabled. No live integration has been activated.
 
 ## Read-only Australia East evidence
 
