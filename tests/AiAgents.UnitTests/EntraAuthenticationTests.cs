@@ -73,6 +73,9 @@ public sealed class EntraAuthenticationTests
 
         var auth = provider.GetRequiredService<IOptions<AuthenticationOptions>>().Value;
         Assert.Equal(OpenIdConnectDefaults.AuthenticationScheme, auth.DefaultScheme);
+        Assert.Equal(CookieAuthenticationDefaults.AuthenticationScheme, auth.DefaultAuthenticateScheme);
+        Assert.Equal(CookieAuthenticationDefaults.AuthenticationScheme, auth.DefaultSignInScheme);
+        Assert.Equal(OpenIdConnectDefaults.AuthenticationScheme, auth.DefaultChallengeScheme);
         var policy = provider.GetRequiredService<IOptions<AuthorizationOptions>>().Value.FallbackPolicy;
         Assert.NotNull(policy);
         Assert.Contains(policy.Requirements, requirement => requirement is DenyAnonymousAuthorizationRequirement);

@@ -3,8 +3,9 @@
 ## Context
 
 The migration requires Aspire for local development and Bicep as the sole
-authoritative production infrastructure definition. The web application still
-refuses startup while authentication and agent integration are incomplete.
+authoritative production infrastructure definition. The web application now
+allows authenticated Development startup; all other environments remain blocked
+while agent integration and deployment validation are incomplete.
 
 ## Decision
 
@@ -26,9 +27,10 @@ Use ServiceDefaults for shared host behavior:
 - HTTP instrumentation does not record exception details. No body, prompt,
   response-content, or log exporter is configured here.
 
-The web project references ServiceDefaults, but startup does not invoke it yet.
-The helper library is not a claim that the web app, dashboard, sign-in, or
-Azure telemetry export has been verified end to end.
+The web project invokes ServiceDefaults at startup and maps its health endpoints.
+HTTP integration tests and a direct local HTTPS smoke test verify the probe
+contracts and anonymous sign-in challenge. This is not a claim that the dashboard,
+real browser sign-in, or Azure telemetry export has been verified end to end.
 
 ## Alternatives considered
 
@@ -57,8 +59,7 @@ dashboard and composed application have not been verified.
 
 ## Follow-up actions
 
-Wire these helpers into authenticated application startup, test the actual
-probe HTTP contracts, verify privacy with exported telemetry, and configure
-Azure Monitor through Bicep and managed identity. Define dependency readiness
+Verify privacy with exported telemetry and configure Azure Monitor through
+Bicep and managed identity. Define dependency readiness
 checks from actual runtime requirements rather than adding paid inference
 calls to health probes.

@@ -24,6 +24,8 @@ configure credential fallback.
 
 Both paths use Microsoft.Identity.Web, tenant-specific authorization-code
 sign-in with PKCE, a secure session cookie, and an authenticated fallback policy.
+The cookie scheme authenticates existing sessions; OpenID Connect challenges
+unauthenticated requests. Pages and Blazor connections require authorization.
 The cookie does not retain access or refresh tokens. Token acquisition has an
 in-memory cache; it is not a persistent multi-replica token store.
 
@@ -59,6 +61,12 @@ certificate was uploaded, and local signing was verified. Non-secret identifiers
 were saved in this workstation's .NET user-secrets. No API permissions or client
 secrets were added.
 
-Establish managed-identity federation for Azure. Wire authentication into startup and the Blazor circuit,
-then verify sign-in, authorization, sign-out, expiration, and user isolation.
-No live sign-in has been verified yet.
+Authentication is now wired into Development startup and protected Blazor
+endpoints. HTTP integration tests verify anonymous challenges and authenticated
+page rendering using a protected test cookie. The real local HTTPS host has
+also returned an Entra challenge using workstation configuration. This does
+not verify actual authorization-code redemption or browser sign-in.
+
+Establish managed-identity federation for Azure. Verify live sign-in, sign-out,
+expiration, circuit revalidation, and user isolation before enabling agent
+operations or production hosting. Production startup remains explicitly blocked.
