@@ -12,7 +12,8 @@ Global Standard**, confirmed acceptance of global inference processing, and
 selected East US for future non-AI regional resources too. This supersedes the
 Australia-only requirement. The tenant/subscription and local-first text-only
 milestone are unchanged. Retrieval and cloud hosting remain later phases.
-No budget amount or provisioning has been approved.
+On 2026-11-19 the user selected a USD 10/month development planning budget;
+provisioning and paid requests remain unapproved.
 
 ## Current read-only evidence
 
@@ -114,22 +115,26 @@ retrieval-tool compatibility, deployment capacity or successful inference.
 The catalog lists gpt-5-mini inference deprecation on 2027-07-13; plan an upgrade
 before production adoption.
 
-The East US public Retail Prices API research identified exact-model priority
-(`pp`) and Data Zone meters, but did not establish an unambiguous ordinary
-GlobalStandard rate. Do not substitute those prices or another model's rates.
-No budget has been established. Budget alerts would not enforce a hard
-spending cap.
+The East US public Retail Prices API subsequently identified ordinary global
+gpt-5-mini Consumption meters at USD 0.25 per million input, USD 0.025 per
+million cached input and USD 2.00 per million output tokens on 2026-11-19.
+These retail prices are not a subscription-specific quote. The selected
+USD 10/month planning budget and any budget alerts do not enforce a hard
+spending cap. See the [deployment proposal](../../.azure/deployment-plan.md)
+for meter IDs, assumptions and illustrative costs.
 
 The source Bicep's gpt-5-mini default version differs from its parameter file.
 Only the latter's 2025-08-07 version matched the observed catalog entry.
 
 ## Follow-up actions
 
-Obtain verified GlobalStandard pricing, an approved usage/budget envelope and
-an explicit deployment capacity. No quota request is currently demonstrated
-to be necessary and none was submitted. Validate exact conversation/history
-RBAC, service APIs, data handling and source-audit gaps before infrastructure
-implementation. Recheck East US catalog/quota immediately before an
+Confirm subscription-specific GlobalStandard pricing, establish a usage
+forecast and select an explicit deployment capacity. No quota request is
+currently demonstrated to be necessary and none was submitted. Validate exact
+conversation/history RBAC, service APIs and data handling before deployment.
+The user accepted the restricted source-audit gap and preparation of draft
+Bicep for the narrow text-only development milestone, not a broader parity
+claim or deployment. Recheck East US catalog/quota immediately before an
 explicitly approved Bicep/azd deployment.
 Keep the first live test text-only and local-hosted; retain the migration's
 Container Apps topology for production rather than introducing a competing

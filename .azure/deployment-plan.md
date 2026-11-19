@@ -2,6 +2,10 @@
 
 Status: Planning - local-first proposal; not approved for provisioning
 
+On 2026-11-19 the user approved preparing and locally compiling the minimal
+Bicep while subscription-specific pricing and runtime conversation permissions
+remain unresolved. This is not approval for deployment or role assignments.
+
 ## Scope
 
 Migrate the source application to .NET 10 and Blazor Interactive Server.
@@ -24,8 +28,9 @@ production delivery remain later migration phases, not omitted capabilities.
   global inference processing. This supersedes the earlier Australia-only
   requirement; East US placement does not constrain inference to East US or
   to the United States.
-- The monthly budget is **unset**. A blank budget response is not approval for
-  any amount, including the previously suggested USD 10.
+- The user selected a **USD 10/month planning budget** for development. It is
+  not a hard spending cap, a verified quote or authorization to provision or
+  make paid requests.
 - Keep runtime, image-pull, ingestion and deployment identities separate.
 - Continuous evaluation is opt-in.
 - Do not provision resources, modify Entra or run paid evaluations without
@@ -80,16 +85,46 @@ production delivery remain later migration phases, not omitted capabilities.
 | Foundry-managed state | Conversations and Responses history | Review storage, retention, deletion and processing terms; New chat does not delete provider history |
 
 Use Bicep as the infrastructure authority and azd for later orchestration.
-The stable `2026-09-01` reference schemas exist for the three Cognitive Services
-resource types above. This is a proposed common schema baseline, not a compiled
-or deployment-validated template. Do not copy preview examples or examples
-that enable key authentication. The saved agent is not an invented ARM resource
-or a separately hosted custom-code container.
+The draft [subscription entry point](../infra/main.bicep) and
+[Foundry module](../infra/modules/foundry.bicep) use the stable `2025-06-01`
+resource schemas returned by the available Bicep schema tool. The newer stable
+`2026-09-01` reference schemas also exist. The draft must not be treated as
+deployment-ready: RBAC, saved-agent authoring, azd wiring, networking approval,
+model capacity and live validation remain outstanding. It creates no role
+assignments. The saved agent is not an invented ARM resource or a separately
+hosted custom-code container. Aspire remains local-only; it does not generate
+the production infrastructure.
+
+The available Azure Verified Module catalog returned an account module but no
+standalone project or model-deployment module. This draft uses a small custom
+module to show all three linked resources together for teaching; revisit the
+account AVM before production. It uses public network access, disables local
+key authentication, and gives the account and project system-assigned
+identities. It does not configure those identities' permissions. Model
+capacity has no default: a positive value is required, but that constraint
+does not establish the service's supported minimum or step. A dedicated new
+resource group name must be supplied; do not point this draft at an existing
+group without reviewing the effect on its location and tags.
+
+Local Bicep linting and compilation succeeded. The compiled template was
+checked for the explicit capacity parameter, East US defaults, keyless account
+configuration, identities and the three expected Foundry resources. This is
+not Azure deployment validation and does not prove availability, authorization
+or application functionality.
 
 The local milestone proposes authenticated public HTTPS access to Foundry,
 subject to tenant networking policy and explicit review. Private networking
 would require an additional local connectivity design. No anonymous access is
 proposed.
+
+Microsoft's [Agent Service setup guidance](https://learn.microsoft.com/en-us/azure/foundry/agents/environment-setup)
+describes Basic Setup as using platform-managed state storage, with projects as
+the unit of sharing and isolation. It describes Standard Setup as using
+customer-owned Storage, Cosmos DB and Search. This proposal is for Basic
+Setup; it does not provide customer-owned conversation storage or private
+agent outbound networking. Review the applicable retention and privacy terms
+before storing real user data. On 2026-11-19 the user accepted Basic Setup for
+synthetic development testing only.
 
 Do not provision ACR, Container Apps, Search, customer-owned Blob storage,
 Key Vault or Azure Monitor resources solely for this first text-only test.
@@ -213,6 +248,15 @@ Current role-definition evidence:
 - Current Foundry RBAC guidance identifies Azure AI Developer with
   hub/workspace scenarios, not modern Foundry projects. Do not substitute it
   or a legacy Cognitive Services role for a verified project permission set.
+- Microsoft's current endpoint authorization guidance confirms that
+  `endpoints/interact/action` permits agent endpoint interaction under the
+  default Azure RBAC scheme. It does not explicitly map the separate
+  conversation create, get and list-items operations used by this application.
+- The current Foundry RBAC getting-started guidance recommends Foundry User on
+  the Foundry resource for the project's managed identity. This is a broader
+  platform-identity recommendation, not evidence that the local SDK caller
+  needs that role. Verify its necessity and scope for this Basic Setup before
+  proposing an assignment.
 - The provider operation catalog exposes AIServices Responses read/write/delete
   operations, but the inspected catalog did not establish a standalone
   conversation API mapping. Do not invent conversation data actions or assume
@@ -230,25 +274,54 @@ than assuming a corrected active version revokes access to earlier versions.
 Foundry identifiers are not per-user authorization boundaries; retain the
 application's conversation ownership and session checks.
 
+### Post-provision permission verification
+
+After separately approved provisioning and role assignments, use an isolated
+test principal without inherited authoring or deployment roles. Record its
+effective scopes and each result without recording tokens or message contents:
+
+| Test | Expected outcome |
+| --- | --- |
+| Create a conversation with a synthetic owner marker; get it and list its items | Each operation succeeds if the proposed runtime role covers it; otherwise stop and investigate the specific denial. |
+| Invoke the pinned agent and receive a streamed response | Completes with the intended runtime identity and an explicitly authorized synthetic request. |
+| Access an agent outside the approved scope and create or update an agent | Denied; do not broaden the runtime role to make these operations succeed. |
+| Send or restore a conversation belonging to a different application user | Application denies access even if the shared Foundry principal can read that conversation. |
+| Invoke or access conversations using a principal without the proposed role | Denied; distinguish missing access from network or configuration errors. |
+
+Agent endpoint scopes are not necessarily evaluated for the standalone
+conversation operations. Record their observed scopes separately; a successful
+response alone is not evidence that history permissions are least privilege.
+Remove temporary test assignments after verification if they are no longer
+needed. Role propagation and inherited permissions can affect results.
+
 ## Cost review
 
-No monthly budget or usage forecast is approved. No paid operation is
-authorized by this proposal.
+The user selected a USD 10/month development planning budget on 2026-11-19.
+No usage forecast or paid operation is authorized by this proposal.
 
-The 2026-11-17 public Retail Prices API checks followed pagination. The
-East US exact-model results identified priority-processing (`pp`) global and
-Data Zone meters, not an unambiguous ordinary GlobalStandard rate for the
-selected model. Do not substitute priority, Data Zone, Batch, another model
-or the superseded gpt-5.6-sol prices. Ordinary GlobalStandard unit pricing
-remains unverified.
+The 2026-11-17 Retail Prices API search did not identify ordinary global
+meters. A refined search on 2026-11-19 using the meter name `GPT 5 Mini`
+found these East US USD Consumption retail meters, each per million tokens:
 
-Obtain an exact East US model/SKU quote before selecting capacity. Once unit
-rates are verified, estimate billable input (including repeated history),
+| Category | Meter name | Meter ID | Retail price |
+| --- | --- | --- | --- |
+| Input | GPT 5 Mini Inpt Glbl 1M Tokens | `6d4c4956-4f18-535d-a63a-d56d74b1327b` | USD 0.25 |
+| Cached input | GPT 5 Mini cchd Inpt Glbl 1M Tokens | `4b63ead2-cde6-5970-ae20-417a7dbbfc06` | USD 0.025 |
+| Output | GPT 5 Mini outpt Glbl 1M Tokens | `2d33aaf7-838f-5765-8a56-d7a7537125f5` | USD 2.00 |
+
+These are public retail estimates, not the subscription's contractual price.
+The response reported an effective start of 2025-08-01 and no next page.
+Confirm the current subscription offer, currency and taxes in the Microsoft
+pricing calculator or a quote before approving spend. Do not substitute
+priority, Data Zone, Batch or another model's meters.
+
+Estimate billable input (including repeated history),
 cached input where applicable, output/reasoning, and any separate service or
 storage charges. For example, 100 requests with 1,000 billable input and 500
-billable output tokens each would cost `0.1 * inputPricePerMillion +
-0.05 * outputPricePerMillion`, before other charges. This is an arithmetic
-example, not a measured forecast.
+billable output tokens each would cost USD 0.125 at the observed uncached
+retail rates, before other charges. As a second illustration, 1,000 requests
+with 3,000 uncached input and 1,000 output tokens each would cost USD 2.75.
+Neither example is a measured forecast or upper bound.
 
 Do not assume subscription credits cover every meter. Include currency,
 taxes, applicable discounts and model-specific billing rules in the review.
@@ -258,21 +331,23 @@ Provisioned throughput or another commitment is not proposed.
 
 ## Approval gates and implementation sequence
 
-1. Complete or explicitly resolve the source-audit gate, including restricted
-   script behavior. Do not retry denied inspections.
-2. Obtain an approved monthly budget/usage envelope and verified gpt-5-mini
-   GlobalStandard pricing. Select a capacity within freshly checked East US
-   quota; no quota increase is currently demonstrated to be necessary.
+1. The user accepted the documented restricted-script source-audit gap for
+   this narrow text-only development milestone on 2026-11-19. Do not retry
+   denied inspections; this does not close the broader parity audit.
+2. The USD 10/month planning budget and public retail rates are recorded.
+   Confirm subscription-specific pricing and establish a usage forecast.
+   Select a capacity within freshly checked East US quota; no quota increase
+   is currently demonstrated to be necessary.
 3. Document US-geography storage and accepted global inference processing,
    exact runtime permissions, setup/runtime principal separation, resource
    names and networking. Retain the explicit East US choice for future
    non-AI regional resources; do not silently substitute another location.
-4. Present the finalized gpt-5-mini version/GlobalStandard capacity, costs, resource
-   mapping and RBAC for implementation approval. Keep this plan in Planning
-   until these blockers are resolved.
-5. After approval, implement focused Bicep/azd and repeat catalog/quota checks.
-   Compile/lint and invoke azure-validate before any separately approved
-   azure-deploy execution. Do not initialize a competing Aspire deployment.
+4. Finalize the gpt-5-mini version/GlobalStandard capacity, costs, resource
+   mapping and RBAC. The draft Bicep is approved for local preparation only;
+   keep this plan in Planning until deployment blockers are resolved.
+5. Complete Bicep/azd and repeat catalog/quota checks. Compile/lint and invoke
+   azure-validate before any separately approved azure-deploy execution. Do
+   not initialize a competing Aspire deployment.
 6. Separately approve resource provisioning, agent authoring and any required
    RBAC changes. Record the saved agent name/version without committing real
    environment-specific endpoints.
@@ -293,6 +368,7 @@ and no chargeable model request was made.
 - [Model/Responses data privacy](https://learn.microsoft.com/en-us/azure/foundry/responsible-ai/openai/data-privacy)
 - [Agent Service data privacy and security](https://learn.microsoft.com/en-us/azure/foundry/responsible-ai/agents/data-privacy-security)
 - [Current Foundry RBAC roles](https://learn.microsoft.com/en-us/azure/foundry/concepts/rbac-foundry)
+- [Agent endpoint authorization](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/agent-endpoint-authorization)
 - [Account stable ARM schema](https://learn.microsoft.com/en-us/azure/templates/microsoft.cognitiveservices/2026-09-01/accounts)
 - [Project stable ARM schema](https://learn.microsoft.com/en-us/azure/templates/microsoft.cognitiveservices/2026-09-01/accounts/projects)
 - [Deployment stable ARM schema](https://learn.microsoft.com/en-us/azure/templates/microsoft.cognitiveservices/2026-09-01/accounts/deployments)
