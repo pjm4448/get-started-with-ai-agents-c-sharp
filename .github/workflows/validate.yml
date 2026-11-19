@@ -36,6 +36,11 @@ jobs:
       - name: Check for Python artifacts
         shell: pwsh
         run: '& (Join-Path scripts check-no-python.ps1)'
+      - name: Install Bicep
+        run: az bicep install --version v0.48.1
+      - name: Validate Foundry Bicep
+        shell: pwsh
+        run: '& (Join-Path scripts test-foundry-bicep.ps1)'
       - name: Report vulnerable dependencies
         run: dotnet list get-started-with-ai-agents-c-sharp.sln package --vulnerable --include-transitive --no-restore
       - name: Publish test results

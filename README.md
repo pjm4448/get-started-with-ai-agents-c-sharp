@@ -90,8 +90,8 @@ successful sign-in displays the disabled chat shell, not a working agent.
 
 ### Optional Foundry configuration
 
-Leave chat disabled until the Azure project, agent, permissions, processing
-residency and costs are approved. After that setup, supply the existing
+Leave chat disabled until the Azure project, agent, permissions and processing
+residency are approved. After that setup, supply the existing
 project's HTTPS endpoint, agent name and explicit agent version through
 user-secrets or environment variables:
 
@@ -165,6 +165,15 @@ Run unit, component and integration tests without a browser installation:
 dotnet test get-started-with-ai-agents-c-sharp.sln --configuration Release --filter "Category!=Browser"
 ```
 
+Check the draft Foundry infrastructure locally with Azure CLI and Bicep:
+
+```powershell
+& .\scripts\test-foundry-bicep.ps1
+```
+
+This compiles and checks the template without provisioning or validating it
+against Azure.
+
 For the complete suite, build once and install the pinned Playwright Chromium
 headless runtime from PowerShell:
 
@@ -185,11 +194,11 @@ They do not verify real Entra sign-in or live Foundry compatibility. See
 
 The initial pull-request workflow restores locked dependencies, builds, installs
 the pinned Chromium runtime, runs all four test projects,
-checks formatting, scans repository files for common Python artifacts and
+checks formatting, lints and compiles the Foundry Bicep draft, scans repository files for common Python artifacts and
 integrations, reports vulnerable packages and publishes separate per-project
 TRX results. The scan covers tracked and
 unignored files, excluding the historical migration documents and scanner
-fixtures. It does not inspect container image layers. Infrastructure,
-container, and deployment checks are not yet implemented.
+fixtures. It does not inspect container image layers. Azure deployment
+validation, container, and deployment checks are not yet implemented.
 
 The migrated solution does not require Python.

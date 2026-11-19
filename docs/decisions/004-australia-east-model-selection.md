@@ -12,8 +12,8 @@ Global Standard**, confirmed acceptance of global inference processing, and
 selected East US for future non-AI regional resources too. This supersedes the
 Australia-only requirement. The tenant/subscription and local-first text-only
 milestone are unchanged. Retrieval and cloud hosting remain later phases.
-On 2026-11-19 the user selected a USD 10/month development planning budget;
-provisioning and paid requests remain unapproved.
+On 2026-11-19 the user declined further budget and subscription-pricing
+planning for this milestone; provisioning and paid requests remain unapproved.
 
 ## Current read-only evidence
 
@@ -26,8 +26,8 @@ East US catalog and subscription usage queries on 2026-11-17 found:
   80 used and **920 remaining**, unit Count. These are service-reported
   capacity counts, not measured throughput or a deployment guarantee.
 - The catalog reports inference/SKU deprecation on 2027-07-13.
-- Default capacity is 10, with minimum and step unspecified. Deployment
-  capacity is not yet selected.
+- Default capacity is 10, with minimum and step unspecified. Use 10 as the
+  initial development candidate, subject to deployment validation.
 
 ## Historical Australia East evidence
 
@@ -67,8 +67,8 @@ retrieval and monitoring regional resources should use East US where
 supported; none has been created or moved.
 
 Use gpt-5-mini and the `GlobalStandard` deployment type in the proposal.
-Version `2025-08-07` is the currently verified catalog candidate; capacity,
-final deployment parameters and spending remain subject to review.
+Version `2025-08-07` is the currently verified catalog candidate; deployment
+parameters remain subject to validation.
 
 GlobalStandard can process inference globally, not only in East US or the
 United States. The user explicitly accepted this. Foundry state storage must
@@ -100,8 +100,8 @@ enabling chat or a paid model call.
 The zero-Standard-quota blocker from Australia East does not apply to the
 selected East US GlobalStandard path, which reports available quota.
 Allocation and live operation are still unverified. Keep local offline
-development available and chat disabled until costs, permissions,
-implementation and activation are approved.
+development available and chat disabled until permissions, implementation and
+activation are approved.
 
 Co-locating future regional services in East US avoids the proposed
 Australia-to-US application/service split, but developers and users elsewhere
@@ -118,9 +118,9 @@ before production adoption.
 The East US public Retail Prices API subsequently identified ordinary global
 gpt-5-mini Consumption meters at USD 0.25 per million input, USD 0.025 per
 million cached input and USD 2.00 per million output tokens on 2026-11-19.
-These retail prices are not a subscription-specific quote. The selected
-USD 10/month planning budget and any budget alerts do not enforce a hard
-spending cap. See the [deployment proposal](../../.azure/deployment-plan.md)
+These retail prices are not a subscription-specific quote; Visual Studio
+subscription credits may not cover every meter. Budget alerts do not enforce
+a hard spending cap. See the [deployment proposal](../../.azure/deployment-plan.md)
 for meter IDs, assumptions and illustrative costs.
 
 The source Bicep's gpt-5-mini default version differs from its parameter file.
@@ -128,9 +128,9 @@ Only the latter's 2025-08-07 version matched the observed catalog entry.
 
 ## Follow-up actions
 
-Confirm subscription-specific GlobalStandard pricing, establish a usage
-forecast and select an explicit deployment capacity. No quota request is
-currently demonstrated to be necessary and none was submitted. Validate exact
+Use the catalog's capacity 10 as the initial development candidate without
+further capacity or pricing planning. No quota request is currently
+demonstrated to be necessary and none was submitted. Validate exact
 conversation/history RBAC, service APIs and data handling before deployment.
 The user accepted the restricted source-audit gap and preparation of draft
 Bicep for the narrow text-only development milestone, not a broader parity

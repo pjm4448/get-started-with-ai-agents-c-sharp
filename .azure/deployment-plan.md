@@ -1,10 +1,13 @@
 # Azure deployment plan
 
-Status: Planning - local-first proposal; not approved for provisioning
+Status: Validation blocked - Foundry network policy
 
 On 2026-11-19 the user approved preparing and locally compiling the minimal
 Bicep while subscription-specific pricing and runtime conversation permissions
-remain unresolved. This is not approval for deployment or role assignments.
+remain unresolved. The user subsequently approved validation and provisioning
+of a new resource group, Foundry account and project, and model deployment.
+This does not authorize role assignments, saved-agent creation, enabling chat
+or model requests.
 
 ## Scope
 
@@ -28,13 +31,13 @@ production delivery remain later migration phases, not omitted capabilities.
   global inference processing. This supersedes the earlier Australia-only
   requirement; East US placement does not constrain inference to East US or
   to the United States.
-- The user selected a **USD 10/month planning budget** for development. It is
-  not a hard spending cap, a verified quote or authorization to provision or
-  make paid requests.
+- The user no longer wants budget, capacity-planning or subscription-price
+  review to block this development milestone. Visual Studio subscription
+  credits are not assumed to cover every meter or prevent charges.
 - Keep runtime, image-pull, ingestion and deployment identities separate.
 - Continuous evaluation is opt-in.
-- Do not provision resources, modify Entra or run paid evaluations without
-  separate approval.
+- Do not modify Entra, assign roles, create an agent or run paid requests or
+  evaluations without separate approval.
 
 ## Confirmed Azure context
 
@@ -54,10 +57,17 @@ production delivery remain later migration phases, not omitted capabilities.
   use synthetic application sessions, not real Entra sign-in.
 - The user selected preparation of a **new** Foundry project, rather than reuse
   of an existing project, and explicitly revised its location to East US on
-  2026-11-17. No project, resource group, azd
-  environment or model deployment has been created for this selection.
+  2026-11-17. No project, resource group or model deployment has been created
+  for this selection. A local azd environment now exists.
   Production federation is not configured.
-- This context does not authorize provisioning or Entra modifications.
+- This context does not authorize Entra modifications.
+- Local azd environment: `aiagents-dev-9af44b45d7`; both locations are
+  `eastus`. Proposed new resource group: `rg-aiagents-dev-9af44b45d7`;
+  Foundry account: `aiagents9af44b45d7`; project: `aiagents-dev`; model
+  deployment: `gpt-5-mini`. The resource-group name was confirmed absent
+  on 2026-11-19; account-name availability remains subject to Azure validation.
+  The local SDK credential chain is not guaranteed to select the same
+  identity as Azure CLI.
 
 ## Approved local development preparation
 
@@ -77,10 +87,10 @@ production delivery remain later migration phases, not omitted capabilities.
 | Component | Proposed resource or operation | Boundary |
 | --- | --- | --- |
 | Local web application | Existing Blazor host and existing Entra sign-in | No cloud compute deployment; keep chat disabled until activation is separately approved |
-| Resource group | New, explicitly named development group | Name and deployment permissions still require review |
+| Resource group | New, uniquely named development group | Verify name and deployment permissions before provisioning |
 | Foundry account | `Microsoft.CognitiveServices/accounts`, AIServices, S0 | East US; disable local/key authentication |
 | Foundry project | `Microsoft.CognitiveServices/accounts/projects` | Child of the new account; platform identity requirements still need verification |
-| Model deployment | `Microsoft.CognitiveServices/accounts/deployments` | Selected gpt-5-mini, GlobalStandard, East US; version/capacity and deployment still require approval |
+| Model deployment | `Microsoft.CognitiveServices/accounts/deployments` | gpt-5-mini, GlobalStandard, East US; initial capacity 10 |
 | Saved prompt agent | Data-plane authoring operation with a recorded name/version | Text-only, no external tools, files or retrieval; matches the existing version-pinned SDK adapter |
 | Foundry-managed state | Conversations and Responses history | Review storage, retention, deletion and processing terms; New chat does not delete provider history |
 
@@ -89,11 +99,17 @@ The draft [subscription entry point](../infra/main.bicep) and
 [Foundry module](../infra/modules/foundry.bicep) use the stable `2025-06-01`
 resource schemas returned by the available Bicep schema tool. The newer stable
 `2026-09-01` reference schemas also exist. The draft must not be treated as
-deployment-ready: RBAC, saved-agent authoring, azd wiring, networking approval,
-model capacity and live validation remain outstanding. It creates no role
+deployment-ready: Azure validation and deployment permissions remain
+outstanding; RBAC and saved-agent authoring are subsequent steps. It creates no role
 assignments. The saved agent is not an invented ARM resource or a separately
 hosted custom-code container. Aspire remains local-only; it does not generate
 the production infrastructure.
+
+The root `azure.yaml` uses azd's infrastructure-only configuration with this
+existing Bicep; it intentionally contains no application service and does not
+deploy the local-only Aspire AppHost or web application. The parameter file
+uses the explicitly selected initial model capacity of 10 and azd environment
+values for resource names and locations.
 
 The available Azure Verified Module catalog returned an account module but no
 standalone project or model-deployment module. This draft uses a small custom
@@ -110,10 +126,11 @@ Local Bicep linting and compilation succeeded. The compiled template was
 checked for the explicit capacity parameter, East US defaults, keyless account
 configuration, identities and the three expected Foundry resources. This is
 not Azure deployment validation and does not prove availability, authorization
-or application functionality.
+or application functionality. The repeatable
+[Bicep check](../scripts/test-foundry-bicep.ps1) runs locally and in CI.
 
-The local milestone proposes authenticated public HTTPS access to Foundry,
-subject to tenant networking policy and explicit review. Private networking
+The user approved authenticated public HTTPS access for the local milestone,
+subject to tenant networking policy and validation. Private networking
 would require an additional local connectivity design. No anonymous access is
 proposed.
 
@@ -151,8 +168,10 @@ The East US quota observation removes the earlier zero-regional-quota blocker
 for this selected GlobalStandard path. It does not guarantee allocatable
 capacity, project/service availability, permission coverage or successful
 inference. The catalog reports a default capacity of 10, but does not report
-a minimum or step; do not interpret that default as an approved deployment
-size, a spending cap or proof of a minimum. Capacity is still to be selected.
+a minimum or step; this value is a practical candidate, not a spending cap,
+proof of a minimum or a guarantee of available capacity. Supply the catalog
+default of 10 for the initial development deployment, subject to a fresh
+availability check and deployment validation.
 
 The user confirmed both the global-processing implications and moving future
 non-AI regional resources to East US. This is approval to revise the proposal
@@ -296,8 +315,9 @@ needed. Role propagation and inherited permissions can affect results.
 
 ## Cost review
 
-The user selected a USD 10/month development planning budget on 2026-11-19.
-No usage forecast or paid operation is authorized by this proposal.
+The user no longer requests a budget or subscription-specific pricing review.
+The earlier USD 10/month planning figure is superseded. No paid operation is
+authorized by this proposal.
 
 The 2026-11-17 Retail Prices API search did not identify ordinary global
 meters. A refined search on 2026-11-19 using the meter name `GPT 5 Mini`
@@ -311,9 +331,8 @@ found these East US USD Consumption retail meters, each per million tokens:
 
 These are public retail estimates, not the subscription's contractual price.
 The response reported an effective start of 2025-08-01 and no next page.
-Confirm the current subscription offer, currency and taxes in the Microsoft
-pricing calculator or a quote before approving spend. Do not substitute
-priority, Data Zone, Batch or another model's meters.
+Subscription-specific pricing, credits and taxes have not been verified. Do not
+substitute priority, Data Zone, Batch or another model's meters.
 
 Estimate billable input (including repeated history),
 cached input where applicable, output/reasoning, and any separate service or
@@ -331,26 +350,35 @@ Provisioned throughput or another commitment is not proposed.
 
 ## Approval gates and implementation sequence
 
+### All validation checks pass
+
+- AZD installation and `azure.yaml` schema validation.
+- Environment setup, authentication and subscription/location checks.
+- Aspire pre-provision checks for applicable resources.
+- Provision preview.
+- Build verification, applicable Docker context and package validation.
+- Static RBAC review and Azure Policy validation.
+- Aspire post-provision checks when relevant to the selected resources.
+
 1. The user accepted the documented restricted-script source-audit gap for
    this narrow text-only development milestone on 2026-11-19. Do not retry
    denied inspections; this does not close the broader parity audit.
-2. The USD 10/month planning budget and public retail rates are recorded.
-   Confirm subscription-specific pricing and establish a usage forecast.
-   Select a capacity within freshly checked East US quota; no quota increase
-   is currently demonstrated to be necessary.
+2. No budget forecast or subscription-specific price review is required by
+   the user. Recheck availability and use the catalog's capacity of 10 as the
+   initial deployment candidate; no quota increase is currently demonstrated
+   to be necessary.
 3. Document US-geography storage and accepted global inference processing,
    exact runtime permissions, setup/runtime principal separation, resource
    names and networking. Retain the explicit East US choice for future
    non-AI regional resources; do not silently substitute another location.
-4. Finalize the gpt-5-mini version/GlobalStandard capacity, costs, resource
-   mapping and RBAC. The draft Bicep is approved for local preparation only;
-   keep this plan in Planning until deployment blockers are resolved.
-5. Complete Bicep/azd and repeat catalog/quota checks. Compile/lint and invoke
-   azure-validate before any separately approved azure-deploy execution. Do
+4. Validate the resource mapping, model deployment and deployment permissions.
+   The user approved provisioning the limited infrastructure; runtime RBAC
+   remains a separately approved follow-up.
+5. Validate Bicep/azd, catalog and quota. Invoke azure-validate before
+   azure-deploy execution. Do
    not initialize a competing Aspire deployment.
-6. Separately approve resource provisioning, agent authoring and any required
-   RBAC changes. Record the saved agent name/version without committing real
-   environment-specific endpoints.
+6. Separately approve agent authoring and any required RBAC changes. Record the
+   saved agent name/version without committing real environment-specific endpoints.
 7. Recheck real Entra browser sign-in/sign-out with current server-side
    sessions. Then separately approve enabling local chat and a bounded,
    synthetic-data live test. Verify stream completion/cancellation, owned
@@ -358,8 +386,32 @@ Provisioned throughput or another commitment is not proposed.
 8. Document live findings and cleanup, then resume mapped retrieval and
    production Container Apps/ACR/OIDC milestones.
 
-No resource, model, agent, azd environment or role assignment was created for
-this proposal. Chat remains disabled, production startup remains blocked,
+## Validation proof and blocker
+
+- On 2026-11-19 the local Bicep lint, compilation and template checks passed;
+  Azure CLI ARM validation returned `Succeeded`. The azd provision preview
+  showed only the new resource group, account, model deployment and project.
+- The azd YAML schema validated, azd packaging reported success with no
+  application services, and the .NET Release build passed without warnings.
+- Azure CLI reported the selected subscription and a fresh model quota of
+  1000 limit, 80 used. The signed-in CLI user's inherited subscription roles
+  include Owner and Foundry User; that identity cannot demonstrate
+  least-privilege runtime access.
+- The subscription assigns the Microsoft cloud security benchmark with its
+  default Azure AI Services network restriction policy set to `Audit`.
+  The rule audits accounts with public access enabled and a network default
+  action other than `Deny`. The current unrestricted public Bicep would
+  therefore be reported noncompliant. Resolve this policy issue before
+  provisioning; an ARM validation success is not proof of audit compliance.
+- The user preferred unrestricted public access and did not provide an IP
+  allowlist. No subscription-scope policy exemptions were found. Provisioning
+  remains blocked until a policy-compliant network design or an authorized
+  exemption is in place; no policy or role changes were made.
+- The Azure MCP policy query failed because its credential used the wrong
+  tenant. The explicitly scoped Azure CLI policy query succeeded instead.
+
+No Azure resource, model, agent or role assignment was created. The local azd
+environment exists. Chat remains disabled, production startup remains blocked,
 and no chargeable model request was made.
 
 ## References

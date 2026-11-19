@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "resourceGroupName": { "value": "${AZURE_RESOURCE_GROUP}" },
+    "primaryLocation": { "value": "${AZURE_LOCATION}" },
+    "aiLocation": { "value": "${AZURE_AI_LOCATION}" },
+    "accountName": { "value": "${AZURE_AI_ACCOUNT_NAME}" },
+    "projectName": { "value": "${AZURE_AI_PROJECT_NAME}" },
+    "modelDeploymentName": { "value": "${AZURE_AI_MODEL_DEPLOYMENT_NAME}" },
+    "modelCapacity": { "value": 10 },
+    "tags": {
+      "value": { "azd-env-name": "${AZURE_ENV_NAME}" }
+    }
+  }
+}

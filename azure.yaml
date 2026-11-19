@@ -1,0 +1,4 @@
+name: get-started-with-ai-agents-c-sharp
+infra:
+  provider: bicep
+  path: infra
