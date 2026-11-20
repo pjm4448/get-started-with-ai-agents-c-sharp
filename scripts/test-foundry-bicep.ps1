@@ -54,6 +54,10 @@ if ($accounts[0].kind -ne 'AIServices' -or
     throw 'The compiled Foundry security or model configuration is incorrect.'
 }
 
+if ($projects[0].dependsOn -notcontains "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('accountName'), parameters('modelDeploymentName'))]") {
+    throw 'Foundry project creation must wait for model deployment to avoid account operation conflicts.'
+}
+
 $acl = $accounts[0].properties.networkAcls
 $moduleParameters = $deployments[0].properties.parameters
 if ($accounts[0].properties.publicNetworkAccess -ne 'Enabled' -or

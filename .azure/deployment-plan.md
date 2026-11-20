@@ -1,6 +1,6 @@
 # Azure deployment plan
 
-Status: Validation blocked - local azd environment access
+Status: Infrastructure provisioned - awaiting saved-agent approval
 
 On 2026-11-19 the user approved preparing and locally compiling the minimal
 Bicep while subscription-specific pricing and runtime conversation permissions
@@ -58,7 +58,9 @@ production delivery remain later migration phases, not omitted capabilities.
 - The user selected preparation of a **new** Foundry project, rather than reuse
   of an existing project, and explicitly revised its location to East US on
   2026-11-17. No project, resource group or model deployment has been created
-  for this selection. A local azd environment now exists.
+  for this selection at the time of that decision. The restricted development
+  infrastructure was subsequently provisioned on 2026-11-20 as recorded below.
+  A local azd environment now exists.
   Production federation is not configured.
 - This context does not authorize Entra modifications.
 - Local azd environment: `aiagents-dev-9af44b45d7`; both locations are
@@ -352,12 +354,17 @@ Provisioned throughput or another commitment is not proposed.
 
 ### All validation checks pass
 
-- AZD installation and `azure.yaml` schema validation.
-- Environment setup, authentication and subscription/location checks.
+- AZD installation.
+- `azure.yaml` schema validation.
+- Environment setup.
+- Authentication check.
+- Subscription/location check.
 - Aspire pre-provision checks for applicable resources.
 - Provision preview.
-- Build verification, applicable Docker context and package validation.
-- Static RBAC review and Azure Policy validation.
+- Build verification.
+- Docker build context validation where applicable.
+- Package validation.
+- Azure Policy validation and static RBAC review.
 - Aspire post-provision checks when relevant to the selected resources.
 
 1. The user accepted the documented restricted-script source-audit gap for
@@ -386,8 +393,105 @@ Provisioned throughput or another commitment is not proposed.
 8. Document live findings and cleanup, then resume mapped retrieval and
    production Container Apps/ACR/OIDC milestones.
 
-## Validation proof and blocker
+## Section 7: Validation Proof
 
+### Provisioning verification: 2026-11-20
+
+- The recovery `azd provision --environment aiagents-dev-9af44b45d7 --no-prompt`
+  succeeded. Subscription deployment `aiagents-dev-9af44b45d7-1795160324`
+  and nested resource-group deployment `foundry` both report Succeeded.
+- Live management-plane reads verified East US placement, AIServices account
+  type, SystemAssigned identities on account and project, disabled local/key
+  authentication, public access with defaultAction Deny, bypass None, exactly
+  the two approved host rules and no virtual-network rules.
+- The model deployment reports Succeeded, gpt-5-mini version 2025-08-07,
+  GlobalStandard and capacity 10. The project also reports Succeeded.
+- `azd show` confirms the expected environment and resource-group portal
+  link; no application services or public application endpoints are deployed.
+  The project API endpoint was returned by Azure management-plane lookup
+  and has not been copied into tracked application configuration.
+- Live role queries show no assignments to the account/project identities
+  at their respective resource scopes (including inherited scope checks),
+  and no direct project role assignments. No role assignments were created.
+- The live query for the network-restriction policy returned no evaluation
+  records yet. Default-deny was verified directly, but Azure Policy compliance
+  is not claimed until evaluation evidence becomes available.
+- No saved agent was created, chat was not enabled, and no paid model request
+  or inference health test was made. Runtime authorization, least-privilege
+  denials and actual data-plane connectivity remain unverified.
+
+### Current restricted-infrastructure preflight
+
+- The first restricted provisioning created the resource group, account and
+  model successfully, but project creation failed with RequestConflict:
+  another operation was in progress on the parent account. The module now
+  orders project creation after model provisioning; the contract check
+  verifies that dependency. Revalidate the changed template before retrying.
+  No resource deletion, role assignment or live model request is required
+  for this recovery.
+- Recovery validation: Bicep lint/compilation and the new ordering regression
+  check pass; ARM validation again reports Succeeded. The recovery preview
+  skips the group and account, creates only the missing project, and shows
+  model differences for service-populated currentCapacity, raiPolicyName and
+  versionUpgradeOption omitted from the template. Live inspection confirms
+  capacity remains 10, policy Microsoft.DefaultV2 and upgrade option
+  OnceNewDefaultVersionAvailable; the requested version and GlobalStandard
+  SKU are unchanged. No external resources or deletes are in the preview.
+  The earlier successful build, YAML, policy, identity and packaging checks
+  remain applicable; the recovery changes only child-resource ordering.
+- `azd version`: 1.37.3. `azd auth login --check-status`: authenticated.
+- The Azure MCP `validate_azure_yaml` command reports the infrastructure-only
+  azd file valid against the stable schema.
+- Named non-secret azd settings match the previously approved subscription,
+  locations and resource names; the exact two host rules were checked locally
+  without dumping the environment.
+- `scripts/test-foundry-bicep.ps1`: lint, compilation, template contract
+  and negative IP-input checks passed. `scripts/check-no-python.ps1` and
+  `git diff --check` passed.
+- `azd provision --preview --environment aiagents-dev-9af44b45d7 --no-prompt`:
+  exactly four creates (resource group, account, model deployment and project),
+  with no changes or deletions of existing resources.
+- `az deployment sub validate`: Succeeded with the approved restricted
+  inputs. The first invocation failed locally on Windows JSON argument
+  quoting; corrected escaping succeeded without changing template inputs.
+- `dotnet build --configuration Release --no-restore`: succeeded with zero
+  warnings and errors. No application behavior changed in this step.
+- `azd package --no-prompt`: succeeded, with no deployable application services.
+- No Node.js runtime, Docker build context, Functions secret storage or
+  Aspire-generated Azure infrastructure is part of this deployment. Aspire
+  remains local-only; its Container Apps post-provision variables do not apply.
+- East US model catalog lists gpt-5-mini version 2025-08-07 as GA and offers
+  GlobalStandard with default capacity 10. Current limit is 1000, usage 80.
+- Subscription deployment principal has inherited Owner, Foundry User and
+  Cognitive Services OpenAI User. This permits infrastructure deployment but
+  cannot demonstrate least-privilege runtime behavior.
+- Static RBAC review: no role-assignment resources exist in the deployment.
+  Account/project system identities perform no external data operations in
+  this text-only scope; no roles are added automatically. Runtime access and
+  saved-agent creation remain separately gated.
+- The subscription assigns only the Microsoft cloud security benchmark at
+  the inspected scope. Its network-access rule now matches the proposed Deny
+  default. ARM validation succeeded; live compliance evaluation remains a
+  post-provision check, not an inference from this result.
+
+### Historical validation and permission issue
+
+- On 2026-11-20 the user selected Manual permissions. Narrow reads of explicitly
+  named non-secret azd settings succeeded without retrying the denied full
+  environment dump. Subscription, resource names and both East US locations
+  match the approved context. Both user-approved host addresses were stored
+  only in the local azd environment and independently checked for canonical
+  IPv4 syntax, distinctness and equality with the approved inputs.
+- Fresh checks confirm the proposed resource group does not exist and the
+  GlobalStandard gpt-5-mini quota is 1000 with 80 used. The applicable
+  subscription assignment remains the Microsoft cloud security benchmark.
+  Its network-access rule audits public accounts unless their network default
+  action is Deny, which the changed template now specifies. This is a static
+  rule assessment, not post-deployment policy compliance evidence.
+- Bicep lint, compilation, template/IP contract checks, the zero-Python scan
+  and whitespace checks passed again. Fresh Azure validation and preview are
+  still required. This infrastructure-only azd project contains no Node.js
+  application, application container or deployed Aspire resources.
 - The Foundry template now specifies deny-by-default network ACLs, two
   required address parameters, and no trusted-service bypass. Local Bicep lint,
   compilation, and template contract checks pass. The string length constraints
@@ -396,10 +500,11 @@ Provisioned throughput or another commitment is not proposed.
   read the azd environment or establish public routability. Verify the actual
   environment inputs before any provisioning. No post-change Azure validation or policy
   compliance result has been established.
-- Access to the local azd environment values was denied by the execution
+- Earlier access to the full local azd environment values was denied by the execution
   permission system. Do not retry or bypass that denial. Environment
   configuration, substitution checks, preview, Azure validation and deployment
-  are blocked until the user resolves the access issue. No new Azure resources,
+  were blocked; named non-secret access has now succeeded as recorded above.
+  No new Azure resources,
   role assignments, agents or live model requests were created in this step.
 - On 2026-11-19 the local Bicep lint, compilation and template checks passed;
   Azure CLI ARM validation returned `Succeeded`. The azd provision preview
@@ -423,9 +528,10 @@ Provisioned throughput or another commitment is not proposed.
 - The Azure MCP policy query failed because its credential used the wrong
   tenant. The explicitly scoped Azure CLI policy query succeeded instead.
 
-No Azure resource, model, agent or role assignment was created. The local azd
-environment exists. Chat remains disabled, production startup remains blocked,
-and no chargeable model request was made.
+Current outcome: the dedicated resource group, Foundry account, project and
+model are provisioned. The local azd environment exists. No agent or role
+assignment was created; chat remains disabled, production startup remains
+blocked, and no chargeable model request was made.
 
 ## References
 

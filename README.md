@@ -23,7 +23,10 @@ legacy conversations are never adopted. See the
 [ownership decision and limitations](docs/decisions/005-conversation-ownership.md).
 Source audit gates, approved project/model/agent configuration, required Azure
 permissions and live service verification remain prerequisites for a working
-live chat. No Foundry resources or agent have been provisioned by this milestone.
+live chat. The development Foundry account, project and gpt-5-mini
+GlobalStandard deployment have now been provisioned in East US with restricted
+IP access. Saved-agent creation and live chat verification remain pending;
+chat is still disabled.
 
 The stable Foundry package still exposes experimental Responses APIs. Their
 isolated use was explicitly approved; see the
@@ -186,7 +189,7 @@ Run unit, component and integration tests without a browser installation:
 dotnet test get-started-with-ai-agents-c-sharp.sln --configuration Release --filter "Category!=Browser"
 ```
 
-Check the draft Foundry infrastructure locally with Azure CLI and Bicep:
+Check the Foundry infrastructure locally with Azure CLI and Bicep:
 
 ```powershell
 & .\scripts\test-foundry-bicep.ps1
@@ -194,6 +197,10 @@ Check the draft Foundry infrastructure locally with Azure CLI and Bicep:
 
 This compiles and checks the template without provisioning or validating it
 against Azure.
+
+The template provisions the model before creating the project because
+concurrent child-resource operations can conflict on the Foundry account.
+The contract check verifies this ordering as well as the firewall settings.
 
 For the complete suite, build once and install the pinned Playwright Chromium
 headless runtime from PowerShell:
