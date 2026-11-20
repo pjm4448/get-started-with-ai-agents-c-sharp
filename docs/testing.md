@@ -12,6 +12,37 @@
 No default test requires Azure resources, Azure sign-in, model calls, the local
 Entra application certificate or enabling chat in application configuration.
 
+### File Search setup and citations
+
+The developer-only setup command is tested through the real installed SDK
+with an in-memory HTTP transport. Focused cases verify approved-file hashes,
+path rejection, successful readiness, repeated setup without writes, failed
+indexing, bounded timeout, caller cancellation and checkpoint retention.
+An uncertain upload blocks a second attempt rather than duplicating a write;
+unexpected remote membership and untracked agents cannot be adopted.
+
+Citation tests preserve file IDs across provider mapping and chat/history
+state, remove repeated annotations, and render labels as encoded text without
+exposing file IDs or constructing download links. bUnit verifies restored
+sources without a model request; the existing five offline browser journeys
+cover streaming, tool progress, history, cancellation and ownership.
+
+The retrieval implementation passed 52 focused unit tests, 21 component
+tests and five offline browser tests. Release solution build completed with
+zero warnings/errors; locked restore, formatting, dependency vulnerability
+reporting for the setup project and the zero-Python checks passed. Live
+retrieval remains a separate unverified gate.
+
+From the repository root, validate the initial two-file corpus without Azure:
+
+```powershell
+dotnet run --project .\tools\AiAgents.Setup -- validate .\samples\products\manifest.json
+```
+
+These are offline behavior checks, **not live File Search grounding or
+least-privilege evidence**. Uploads and fresh automated model requests require
+separate approval. See [retrieval setup and live checks](retrieval.md).
+
 ## Fast suite without a browser runtime
 
 From the repository root:

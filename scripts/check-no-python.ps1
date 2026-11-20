@@ -28,7 +28,8 @@ finally {
 }
 
 $namePattern = '(^|/)(?:[^/]+\.(?:py|pyc|pyo|pyi|pyw|pyd|whl)|requirements(?:[._-][^/]*)?\.txt|pyproject\.toml|Pipfile(?:\.lock)?|poetry\.lock|uv\.lock|environment\.ya?ml|\.python-version|tox\.ini|pytest\.ini)$|(^|/)\.venv(/|$)'
-$commandPattern = '(?:^\s*(?:-\s*)?(?:run(?:\s+|:\s*)|cmd\s+)?|[;&|]\s*)(?:\$\s*)?(?:sudo\s+)?(?:python(?:\d+(?:\.\d+)*)?|pypy\d*|pip(?:\d+(?:\.\d+)*)?|conda|poetry|uv)(?:\.exe)?(?:\s|$)'
+# Recognize uv command syntax rather than ordinary product prose such as UV protection.
+$commandPattern = '(?:^\s*(?:-\s*)?(?:run(?:\s+|:\s*)|cmd\s+)?|[;&|]\s*)(?:\$\s*)?(?:sudo\s+)?(?:python(?:\d+(?:\.\d+)*)?|pypy\d*|pip(?:\d+(?:\.\d+)*)?|conda|poetry|uv(?=(?:\.exe)?(?:\s+(?:init|add|remove|sync|lock|export|tree|format|run|tool|python|pip|venv|cache|self|version|build|publish|auth|help|generate-shell-completion)\b|\s+--?[\w-]+|\s*$)))(?:\.exe)?(?:\s|$)'
 $integrationPattern = 'actions/setup-python@|devcontainers/features/python(?:[:/@]|$)|^\s*FROM\s+(?:--platform=\S+\s+)?(?:docker\.io/)?python(?::|@|\s|$)|(?:apt(?:-get)?|apk|dnf|yum)\s+(?:install|add)\b.*\bpython\d*\b|<PackageReference\s+Include\s*=\s*["''](?:pythonnet|python\.runtime)["'']|["'']type["'']\s*:\s*["'']python["'']'
 $documentationPattern = '\b(?:install|run|execute|use)\s+(?:python(?:\d+(?:\.\d+)*)?|pip(?:\d+(?:\.\d+)*)?|conda)\b'
 $textPattern = '\.(?:cs|csproj|props|targets|json|ya?ml|sh|ps1|md)$|(?:^|/)Dockerfile(?:\.[^/]*)?$'

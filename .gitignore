@@ -9,3 +9,4 @@
 !.azure/deployment-plan.md
 *.user
 *.suo
+.local/

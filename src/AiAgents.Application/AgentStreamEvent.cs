@@ -6,7 +6,7 @@ public sealed record TextDelta(string Text) : AgentStreamEvent;
 
 public sealed record CompletedText(string Text) : AgentStreamEvent;
 
-public sealed record Citation(string Label, Uri? Source) : AgentStreamEvent;
+public sealed record Citation(string Label, Uri? Source, string? FileId = null) : AgentStreamEvent;
 
 public sealed record ToolCallStarted(string Id, string Name) : AgentStreamEvent;
 

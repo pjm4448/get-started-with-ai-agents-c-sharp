@@ -1,3 +1,5 @@
+using AiAgents.Application;
+
 namespace AiAgents.Web.Components.Chat;
 
 public enum ChatMessageRole
@@ -18,4 +20,4 @@ public enum ConversationStatus
 public sealed record ChatMessage(
     ChatMessageRole Role,
     string Text,
-    IReadOnlyList<string> Citations);
+    IReadOnlyList<Citation> Citations);

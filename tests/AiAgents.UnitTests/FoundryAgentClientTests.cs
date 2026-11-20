@@ -42,7 +42,7 @@ public sealed class FoundryAgentClientTests
             item => Assert.Equal(new ToolCallCompleted("fs_1"), item),
             item => Assert.Equal(new TextDelta("Hello"), item),
             item => Assert.Equal(new CompletedText("Hello"), item),
-            item => Assert.Equal(new Citation("guide.pdf", null), item),
+            item => Assert.Equal(new Citation("guide.pdf", null, "file_1"), item),
             item => Assert.Equal(new Citation("Guide", new Uri("https://example.com/guide")), item),
             item => Assert.Equal(new UsageInformation(12, 7), item),
             item => Assert.IsType<AgentCompleted>(item));

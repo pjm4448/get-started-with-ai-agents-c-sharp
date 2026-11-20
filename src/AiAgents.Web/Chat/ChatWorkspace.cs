@@ -64,7 +64,7 @@ public sealed class ChatWorkspace(
 
                     messages.Add(new ChatMessage(
                         item.Role == ConversationMessageRole.User ? ChatMessageRole.User : ChatMessageRole.Assistant,
-                        item.Text, [.. item.Citations.Select(citation => citation.Label)]));
+                        item.Text, [.. item.Citations.Distinct()]));
                 }
 
                 await EnsureCurrentSessionAsync(token);

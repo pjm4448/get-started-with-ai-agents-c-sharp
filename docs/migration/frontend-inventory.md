@@ -3,9 +3,12 @@
 This is a static, preliminary migration mapping. Paths are relative to the
 source repository. The chosen target is server-interactive Blazor with standard
 CSS unless a component needs a verified additional dependency. No Azure service
-is directly accessed by the browser. Most actions remain proposals. A preliminary
-plain-text transcript and disabled composer have been implemented; neither is
-connected to an agent or authenticated conversation.
+is directly accessed by the browser. Most actions remain proposals.
+Authenticated local chat is now connected to the text-only Foundry agent.
+The transcript supports streamed plain text, tool progress and citation labels;
+typed file identities survive stream/history mapping without becoming public
+links. Markdown, themes and other source UI parity remain open. Live File Search
+has not yet been verified.
 
 Verification shorthand: **UI** means rendering, responsive behavior, keyboard,
 focus and accessibility; **chat** means history, streaming, errors and
@@ -67,7 +70,10 @@ proposed target is a sample-data directory used by the setup/ingestion
 operation, subject to provenance and redistribution review. Both managed File
 Search and optional Azure AI Search depend on them. Verify each file's upload,
 index completion and citation label; the specific contents of the PDFs have
-not yet been verified.
+not yet been fully reviewed. The initial target corpus includes only
+`product_info_1.md` and `product_info_2.md`, unchanged with the source MIT
+notice and SHA-256 manifest. The other 18 remain deferred; metadata and a
+local extracted-text notice scan are not a full content/provenance audit.
 
 | Source | Description | Action |
 | --- | --- | --- |

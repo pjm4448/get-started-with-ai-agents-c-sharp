@@ -21,6 +21,9 @@ jobs:
         run: dotnet restore get-started-with-ai-agents-c-sharp.sln --locked-mode
       - name: Build
         run: dotnet build get-started-with-ai-agents-c-sharp.sln --configuration Release --no-restore
+      - name: Validate approved product samples without Azure
+        shell: pwsh
+        run: dotnet run --project (Join-Path tools AiAgents.Setup) --configuration Release --no-build --no-restore -- validate (Join-Path samples products manifest.json)
       - name: Install Chromium for offline browser tests
         shell: pwsh
         env:

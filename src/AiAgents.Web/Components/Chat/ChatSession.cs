@@ -197,7 +197,11 @@ public sealed class ChatSession
                 _messages[^1] = assistant with { Text = completed.Text };
                 break;
             case Citation citation:
-                _messages[^1] = assistant with { Citations = [.. assistant.Citations, citation.Label] };
+                if (!assistant.Citations.Contains(citation))
+                {
+                    _messages[^1] = assistant with { Citations = [.. assistant.Citations, citation] };
+                }
+
                 break;
             case ToolCallStarted started:
                 _activeTools.Add(started.Id);

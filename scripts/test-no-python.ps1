@@ -24,6 +24,15 @@ try {
     Set-Content -LiteralPath (Join-Path $root 'checks.yml') -Value '- name: Check for Python artifacts'
     Assert-Scan 0
 
+    Add-Content -LiteralPath (Join-Path $root 'README.md') -Value '- UV protection and blue light filtering'
+    Assert-Scan 0
+
+    foreach ($command in @('uv sync', 'UV.exe pip install example', 'uv --version')) {
+        Set-Content -LiteralPath (Join-Path $root 'build.sh') -Value $command
+        Assert-Scan 1
+    }
+    Remove-Item -LiteralPath (Join-Path $root 'build.sh')
+
     New-Item -ItemType File -Path (Join-Path $root 'example.py') | Out-Null
     Assert-Scan 1
     Remove-Item -LiteralPath (Join-Path $root 'example.py')

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "name": "product_info_1.md",
+      "sha256": "5979E9ADB0AF01080079F8398A858D6A0C7C63AB2485AB32E9B29A7B6E1CB73A"
+    },
+    {
+      "name": "product_info_2.md",
+      "sha256": "F271DE5A721DE26C3588F45DC5F2A01FFAD233881B46464163C67C708C4E2D03"
+    }
+  ]
+}

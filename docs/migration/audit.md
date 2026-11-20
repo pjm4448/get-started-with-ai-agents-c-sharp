@@ -26,6 +26,27 @@ inventory records the permission-denied script inspection. A filename-presence
 check found every tracked filename represented in the audit documents; this is
 not proof that every file's behavior was fully inspected.
 
+### Current bounded retrieval milestone
+
+Authenticated text-only local chat has now been verified with the real
+Foundry agent and independently confirmed by the user. Source-default File
+Search has an offline-tested .NET setup console and typed citation identity
+preservation, but no uploaded corpus or live retrieval is yet claimed.
+The [initial corpus](../../samples/products/README.md) contains only the two
+fully reviewed Markdown documents with their original MIT notice and exact
+hashes. The other seven Markdown/eleven PDF documents await detailed review.
+See [ADR 008](../decisions/008-file-search-setup.md).
+
+| Source capability | Implemented target | Remaining verification |
+| --- | --- | --- |
+| Privileged file/vector-store and agent setup | `tools/AiAgents.Setup`; installed Azure.AI.Extensions.OpenAI clients and documented agent REST v1 | Separate upload approval, actual Basic setup/model/network support and pinned agent readback |
+| File citations and history | Application-owned file IDs and labels; deduplicated stream/history UI state | Real document-grounded answer facts and source restoration |
+| Initial sample facts | Source files 1 and 2, unchanged and hash-pinned, with included MIT notice | Fresh bounded inference approval and actual cited answers |
+| Remaining source sample corpus | Inventory, PDF text extraction and initial notice/metadata scan only | Detailed review before reuse; source data contains inconsistencies |
+
+This does not close the denied source-script inspection, optional Azure AI
+Search, evaluations, production identity or broader source-parity gates.
+
 ## Observed behavior and parity requirements
 
 | Capability | Observed source | Migration and verification |

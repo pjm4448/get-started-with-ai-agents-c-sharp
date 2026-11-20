@@ -31,6 +31,13 @@ in through .NET user-secrets; other environments remain disabled by default.
 The verified developer credential is privileged, not a least-privilege
 production runtime identity.
 
+The next retrieval milestone now has an offline-tested
+[File Search setup command](docs/retrieval.md) and two reviewed, hash-pinned
+product samples. It preserves the working text-only agent and requires
+explicit approval before uploads or a local agent switch. Live retrieval has
+not yet been verified. Citation file identities are preserved in typed
+stream/history state; the UI still shows encoded source labels, not file links.
+
 The stable Foundry package still exposes experimental Responses APIs. Their
 isolated use was explicitly approved; see the
 [SDK decision and upgrade safeguards](docs/decisions/003-foundry-invocation-sdk.md).

@@ -9,6 +9,19 @@ namespace AiAgents.UnitTests;
 public sealed class ChatSessionTests
 {
     [Fact]
+    public async Task PreservesFileCitationIdentityAndDeduplicatesRepeatedAnnotations()
+    {
+        var citation = new Citation("product_info_1.md", null, "file_1");
+        var session = CreateSession(new SequenceClient(
+            [new TextDelta("Answer"), citation, citation, new AgentCompleted()]));
+
+        await session.SendAsync("Question");
+
+        Assert.Equal(citation, Assert.Single(session.Messages[^1].Citations));
+        Assert.Equal(ConversationStatus.Completed, session.Status);
+    }
+
+    [Fact]
     public async Task AppliesStreamingEventsAndPreservesConversationTurns()
     {
         var client = new SequenceClient(
@@ -44,7 +57,7 @@ public sealed class ChatSessionTests
             {
                 Assert.Equal(ChatMessageRole.Assistant, message.Role);
                 Assert.Equal("Complete answer", message.Text);
-                Assert.Equal(["Document"], message.Citations);
+                Assert.Equal([new Citation("Document", new Uri("https://example.test/secret?token=private"))], message.Citations);
             });
         Assert.Contains(("Part", 0), snapshots);
         Assert.Contains(("Partial", 1), snapshots);

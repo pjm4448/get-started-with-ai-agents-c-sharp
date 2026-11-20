@@ -104,7 +104,7 @@ public sealed class FoundryAgentClient : IAgentClient, IConversationStore
 
             yield return new ConversationHistoryMessage(message.Id,
                 message.Role == MessageRole.User ? ConversationMessageRole.User : ConversationMessageRole.Assistant,
-                text.ToString(), citations.AsReadOnly());
+                text.ToString(), [.. citations.Distinct()]);
         }
     }
 
@@ -123,7 +123,7 @@ public sealed class FoundryAgentClient : IAgentClient, IConversationStore
             switch (annotation)
             {
                 case FileCitationMessageAnnotation file:
-                    yield return new Citation(file.Filename, null);
+                    yield return new Citation(file.Filename, null, file.FileId);
                     break;
                 case UriCitationMessageAnnotation url:
                     yield return new Citation(url.Title, url.Uri.Scheme is "https" or "http" ? url.Uri : null);

@@ -23,7 +23,8 @@ public sealed class ConversationTranscriptTests
         ChatMessage[] messages =
         [
             new(ChatMessageRole.User, "<script>alert(1)</script>", []),
-            new(ChatMessageRole.Assistant, "Partial\nresponse", ["<img src=x onerror=alert(1)>"])
+            new(ChatMessageRole.Assistant, "Partial\nresponse",
+                [new("<img src=x onerror=alert(1)>", new Uri("https://example.test/private?token=hidden"), "file_private")])
         ];
 
         string html = await RenderTranscriptAsync(messages, ConversationStatus.Responding);
@@ -33,6 +34,8 @@ public sealed class ConversationTranscriptTests
         Assert.Contains("Partial\nresponse", System.Net.WebUtility.HtmlDecode(html));
         Assert.DoesNotContain("<script>", html);
         Assert.DoesNotContain("<img", html);
+        Assert.DoesNotContain("file_private", html);
+        Assert.DoesNotContain("token=hidden", html);
         Assert.Contains("Assistant is responding.", html);
         Assert.Contains("aria-live=\"polite\"", html);
     }
