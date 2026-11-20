@@ -60,6 +60,13 @@ baseline and latest before creating the new version, but cannot atomically
 exclude external writers. Version creation may move the `latest` pointer.
 The path has offline fake-transport coverage and has not been exercised live.
 
+The explicit replacement path supports a separate, newly written fictional
+corpus without reuploading baseline documents. Its new agent version adds
+fictional-content guidance while baseline verification retains the original
+definition. Replacement is bound to a separate state and cannot be selected
+accidentally through the existing expansion command. It does not itself switch
+the web application or perform inference.
+
 Runtime citations retain file IDs in application-owned models but display only
 encoded source labels. No download link or protected-file proxy is inferred
 from an ID. The sample corpus is shared approved data, not a demonstration of
@@ -104,6 +111,12 @@ included a raw citation marker in its text despite displaying the correct
 source label. A subsequent offline-tested presentation fix hides the observed
 pattern, but other marker formats remain unverified. This check does not
 establish least-privilege runtime access or production readiness.
+
+The fictional replacement was subsequently indexed in a separate store and
+read back as `aiagents-products` version `2`; version `1` remains available.
+A repeat setup verified the same state and membership without new writes.
+Local chat is pinned to version `2`; manual model and citation checks remain
+pending.
 
 ## References
 

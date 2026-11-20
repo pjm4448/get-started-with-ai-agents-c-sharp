@@ -1,11 +1,12 @@
 # Local document-grounded chat
 
-Status: **live grounded chat verified with the initial corpus**. The two
-reviewed files were ingested into a vector store and the separate
-`aiagents-products` version `1` agent was verified on the configured
-workstation. A repeat setup verified existing resources. The workstation now
-opts in to this agent; the original text-only agent remains available for
-rollback. Building or starting the application never uploads sample documents.
+Status: **fictional replacement installed; manual chat verification pending**.
+The initial two-file corpus was verified with `aiagents-products` version `1`.
+The 20 fictional records have since been indexed in a separate store and
+version `2` was read back and selected on this workstation. Repeat setup
+verified existing resources. Version `1` and the text-only agent remain
+available for rollback. Building or starting the application never uploads
+sample documents.
 One live answer included an unformatted citation marker in its text; the
 separately displayed source label was correct. The transcript now hides the
 recognized marker pattern, including the observed missing closing delimiter.
@@ -22,10 +23,8 @@ decisions and rights/provenance checks. These are sample
 claims, not verified product, contact or safety guidance.
 
 A separate [fictional sample corpus](../samples/fictional/README.md) is
-available for offline validation. It is not part of the current live agent.
-The current version-update command requires retaining the old baseline, so it
-cannot use the fictional corpus as a complete replacement without a reviewed
-setup change.
+indexed by the current local agent version. Its chat answers and citations
+have not yet been verified manually.
 
 Use the configured workstation's .NET 10 SDK and developer Azure credentials
 for the same tenant/project as local chat. Web sign-in does not authenticate
@@ -145,6 +144,32 @@ prevent changes made from another machine, and the latest check and version
 creation are not atomic; coordinate other writers before using this command.
 An uncertain write requires manual reconciliation, not an automatic retry.
 
+### Replacing the corpus with fictional samples
+
+The separate `replace-version` path accepts a replacement manifest instead of
+requiring the original documents in the new store. It checks the recorded
+baseline locally and remotely but rejects replacement files with baseline
+names or identical content. It does not reupload the baseline. The new
+version's instructions identify the samples as fictional and not product or
+safety guidance; instructions alone are not a safety guarantee.
+
+After confirming the exact fictional files, retention implications and impact
+on other clients, the approved command is:
+
+```powershell
+dotnet run --project .\tools\AiAgents.Setup -- replace-version .\samples\fictional\manifest.json .\samples\products\manifest.json .\.local\products-state.json .\.local\fictional-state.json --approve-replacement --approve-upload --approve-agent-version
+```
+
+The command requires all three flags. It uses a new vector store and distinct
+checkpoint state, retains the baseline version and store, and verifies the
+returned version. `apply` and `apply-version` keep their existing behavior.
+Local state locks cannot prevent other machines from changing `latest` between
+the last check and the write. A pending write must be reconciled, not retried.
+Switch local chat only after the new pinned version has been verified, and
+preserve the previous version for rollback. Neither setup nor switching sends
+a model request. The fictional corpus contains Markdown only; PDF ingestion
+remains unverified by this corpus.
+
 Server failures are logged by exception type/HTTP status without provider
 response bodies. Safe local setup diagnostics identify manifest/readiness
 failures. Never troubleshoot by dumping all user-secrets, azd values or tokens.
@@ -178,16 +203,24 @@ To roll back on this workstation, restore `Foundry:AgentName=aiagents-chat`
 and its previously verified `Foundry:AgentVersion=1` using the same two named
 user-secret commands, restart, sign in and choose **New chat**. Neither
 switching nor New chat deletes remotely stored files/conversations.
+The prior retrieval corpus is also still available as
+`Foundry:AgentName=aiagents-products`, `Foundry:AgentVersion=1`.
 
 ## Live verification
 
-A fresh, bounded model-request approval is required for automated checks;
-the previous text-only allowance is exhausted. Use the real authenticated
-local Blazor UI and the questions in the sample README. Confirm the
-document-specific warranty/return facts and matching source labels, follow-up
-context, a missing fact without a fabricated answer/source, and source
-restoration after refresh. Recheck cancellation/recovery if retrieval changes
-that behavior.
+A fresh, bounded model-request approval is required for automated checks.
+The user chose to test version `2` manually. In the authenticated local UI,
+start **New chat**, use the questions in the
+[fictional sample README](../samples/fictional/README.md), and check source
+labels, an absent fact, refresh and cancellation. The older warranty/return
+checks below apply only to version `1`, not to the fictional replacement.
+
+On 2026-11-21, replacement setup ingested all 20 fictional files, verified
+exact store membership and the pinned version `2` definition, and completed
+a repeat run without changing either local state file. Readback confirmed
+`latest` is `2` and version `1` still exists. Local chat was pinned to `2`;
+health and liveness returned 200. No model request was sent for version `2`,
+so its grounding, citations and manual chat experience are not yet verified.
 
 On 2026-11-21, five approved synthetic requests in the signed-in local UI
 verified the glasses' two-year electronics warranty and 30-day return period,

@@ -8,7 +8,8 @@ Authenticated local chat has been verified with a Foundry agent.
 The transcript supports streamed plain text, tool progress and citation labels;
 typed file identities survive stream/history mapping without becoming public
 links. Markdown, themes and other source UI parity remain open. Live File Search
-was verified with two sample documents; the expanded corpus is still deferred.
+was verified with two source documents. A separate fictional corpus is now
+indexed; its live chat and citations await manual verification.
 
 Verification shorthand: **UI** means rendering, responsive behavior, keyboard,
 focus and accessibility; **chat** means history, streaming, errors and

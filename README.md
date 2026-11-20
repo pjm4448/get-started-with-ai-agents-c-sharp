@@ -39,6 +39,9 @@ working text-only agent remains available for rollback. Live grounded chat has
 been verified with the two samples; an observed raw citation marker is now
 hidden by an offline-tested presentation fix. Citation file identities are preserved in typed
 stream/history state; the UI still shows encoded source labels, not file links.
+The [fictional replacement corpus](samples/fictional/README.md) is now indexed
+as `aiagents-products` version `2` and selected locally. Its manual chat and
+citation checks are pending; the prior retrieval version remains available.
 
 The stable Foundry package still exposes experimental Responses APIs. Their
 isolated use was explicitly approved; see the

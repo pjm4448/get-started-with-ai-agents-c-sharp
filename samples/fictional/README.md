@@ -18,9 +18,10 @@ question about an absent serial number should be answered as unknown.
 These are proposed questions only: automated model requests need separate
 approval.
 
-The existing live agent and its two-file baseline are unchanged. The current
-`apply-version` command requires all original baseline documents in the new
-manifest, so it cannot install this replacement-only corpus. A separately
-reviewed setup change and explicit approval are required before any upload,
-remote agent update, local switch or live test. The sample set is Markdown
-only; it does not demonstrate PDF ingestion.
+The replacement setup has indexed these files in a separate store and the
+local app is pinned to `aiagents-products` version `2`. The old version and
+store remain available. No version `2` chat request has been tested yet.
+`replace-version` checks the original baseline without reuploading it. See
+[retrieval setup](../../docs/retrieval.md) for retention, versioning and
+rollback details. The sample set is Markdown only; it does not demonstrate PDF
+ingestion.

@@ -7,10 +7,12 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 
 if (args is not (["validate", _] or ["apply", _, _, "--approve-upload"] or
-    ["apply-version", _, _, _, _, "--approve-upload", "--approve-agent-version"]))
+    ["apply-version", _, _, _, _, "--approve-upload", "--approve-agent-version"] or
+    ["replace-version", _, _, _, _, "--approve-replacement", "--approve-upload", "--approve-agent-version"]))
 {
     Console.Error.WriteLine("Usage: validate <manifest.json> | apply <manifest.json> <local-state.json> --approve-upload | " +
-        "apply-version <expanded-manifest.json> <baseline-manifest.json> <baseline-state.json> <new-state.json> --approve-upload --approve-agent-version");
+        "apply-version <expanded-manifest.json> <baseline-manifest.json> <baseline-state.json> <new-state.json> --approve-upload --approve-agent-version | " +
+        "replace-version <replacement-manifest.json> <baseline-manifest.json> <baseline-state.json> <new-state.json> --approve-replacement --approve-upload --approve-agent-version");
     return 2;
 }
 
@@ -56,10 +58,12 @@ try
     };
     var setup = new FileSearchSetup(options, credential, http);
     string version;
-    if (args[0] == "apply-version")
+    if (args[0] is "apply-version" or "replace-version")
     {
         var baselineProducts = await ProductManifest.LoadAsync(args[2], cancellation.Token);
-        version = await setup.ApplyVersionAsync(products, baselineProducts, args[3], args[4], cancellation.Token);
+        version = args[0] == "replace-version"
+            ? await setup.ApplyReplacementAsync(products, baselineProducts, args[3], args[4], cancellation.Token)
+            : await setup.ApplyVersionAsync(products, baselineProducts, args[3], args[4], cancellation.Token);
     }
     else
     {

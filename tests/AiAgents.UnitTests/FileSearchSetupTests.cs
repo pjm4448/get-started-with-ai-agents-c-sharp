@@ -15,6 +15,8 @@ public sealed class FileSearchSetupTests : IDisposable
     private static VerifiedProducts Products => new(new string('A', 64), [new("guide.md", "Sample fact."u8.ToArray())]);
     private static VerifiedProducts ExpandedProducts => new(new string('B', 64),
         [new("guide.md", "Sample fact."u8.ToArray()), new("extra.pdf", "Another fact."u8.ToArray())]);
+    private static VerifiedProducts ReplacementProducts => new(new string('C', 64),
+        [new("fictional-1.md", "Imaginary exhibit one."u8.ToArray()), new("fictional-2.md", "Imaginary exhibit two."u8.ToArray())]);
     private static FileSearchSetupOptions Options => new()
     {
         ProjectEndpoint = new Uri("https://test.services.ai.azure.com/api/projects/test"),
@@ -322,6 +324,149 @@ public sealed class FileSearchSetupTests : IDisposable
         Assert.Contains("create retrieval agent version", await File.ReadAllTextAsync(ExpandedStatePath));
     }
 
+    [Fact]
+    public async Task ReplacementUploadsOnlyNewFilesAndPreservesBaselineOnRepeat()
+    {
+        using var handler = new SetupHandler();
+        using var http = new HttpClient(handler);
+        var setup = new FileSearchSetup(Options, new TestCredential(), http);
+        await setup.ApplyAsync(Products, StatePath, default);
+        string baseline = await File.ReadAllTextAsync(StatePath);
+
+        Assert.Equal("2", await setup.ApplyReplacementAsync(ReplacementProducts, Products, StatePath, ExpandedStatePath, default));
+        int writes = handler.Writes;
+        Assert.Equal("2", await setup.ApplyReplacementAsync(ReplacementProducts, Products, StatePath, ExpandedStatePath, default));
+
+        Assert.Equal(writes, handler.Writes);
+        Assert.Equal(3, handler.Uploads);
+        Assert.DoesNotContain("guide.md", handler.UploadedBodies[1], StringComparison.Ordinal);
+        Assert.DoesNotContain("Sample fact.", handler.UploadedBodies[1], StringComparison.Ordinal);
+        Assert.Contains("fictional-1.md", handler.UploadedBodies[1], StringComparison.Ordinal);
+        Assert.Contains("fictional-2.md", handler.UploadedBodies[2], StringComparison.Ordinal);
+        Assert.Equal(baseline, await File.ReadAllTextAsync(StatePath));
+        Assert.Equal("vs_1", handler.Definitions["1"].GetProperty("tools")[0].GetProperty("vector_store_ids")[0].GetString());
+        Assert.Equal("vs_2", handler.Definitions["2"].GetProperty("tools")[0].GetProperty("vector_store_ids")[0].GetString());
+        Assert.Contains("fictional", handler.Definitions["2"].GetProperty("instructions").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ReplacementRejectsBaselineFilesAndWrongStateModeBeforeRemoteWrites()
+    {
+        using var handler = new SetupHandler();
+        using var http = new HttpClient(handler);
+        var setup = new FileSearchSetup(Options, new TestCredential(), http);
+        await setup.ApplyAsync(Products, StatePath, default);
+        int writes = handler.Writes;
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyReplacementAsync(ExpandedProducts, Products, StatePath, ExpandedStatePath, default));
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyReplacementAsync(new VerifiedProducts(new string('D', 64),
+                [new("renamed.md", "Sample fact."u8.ToArray())]), Products, StatePath, ExpandedStatePath, default));
+        Assert.Equal(writes, handler.Writes);
+        Assert.False(File.Exists(ExpandedStatePath));
+
+        await setup.ApplyReplacementAsync(ReplacementProducts, Products, StatePath, ExpandedStatePath, default);
+        string state = await File.ReadAllTextAsync(ExpandedStatePath);
+        Assert.Contains("\"replacement\": true", state, StringComparison.Ordinal);
+        await File.WriteAllTextAsync(ExpandedStatePath, state.Replace(
+            "\"replacement\": true", "\"replacement\": false", StringComparison.Ordinal));
+        int requests = handler.Requests;
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyReplacementAsync(ReplacementProducts, Products, StatePath, ExpandedStatePath, default));
+        Assert.Equal(requests, handler.Requests);
+    }
+
+    [Fact]
+    public async Task ReplacementRetriesAfterIndexFailureWithoutDuplicatingUploads()
+    {
+        using var handler = new SetupHandler();
+        using var http = new HttpClient(handler);
+        var setup = new FileSearchSetup(Options, new TestCredential(), http);
+        await setup.ApplyAsync(Products, StatePath, default);
+        int originalPolls = handler.Polls;
+        handler.OnPoll = () =>
+        {
+            if (handler.Polls == originalPolls + 2)
+            {
+                handler.IndexingStatus = "failed";
+            }
+        };
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyReplacementAsync(ReplacementProducts, Products, StatePath, ExpandedStatePath, default));
+        Assert.Equal(0, handler.AgentVersionCreates);
+        handler.OnPoll = null;
+        handler.IndexingStatus = "completed";
+        Assert.Equal("2", await setup.ApplyReplacementAsync(ReplacementProducts, Products, StatePath, ExpandedStatePath, default));
+        Assert.Equal(3, handler.Uploads);
+    }
+
+    [Fact]
+    public async Task ReplacementCancellationResumesWithoutDuplicatingUploads()
+    {
+        using var handler = new SetupHandler();
+        using var http = new HttpClient(handler);
+        using var cancellation = new CancellationTokenSource();
+        var setup = new FileSearchSetup(Options, new TestCredential(), http);
+        await setup.ApplyAsync(Products, StatePath, default);
+        int originalPolls = handler.Polls;
+        handler.OnPoll = () =>
+        {
+            if (handler.Polls == originalPolls + 2)
+            {
+                cancellation.Cancel();
+            }
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            setup.ApplyReplacementAsync(ReplacementProducts, Products, StatePath, ExpandedStatePath, cancellation.Token));
+        Assert.Equal(0, handler.AgentVersionCreates);
+        handler.OnPoll = null;
+        Assert.Equal("2", await setup.ApplyReplacementAsync(ReplacementProducts, Products, StatePath, ExpandedStatePath, default));
+        Assert.Equal(3, handler.Uploads);
+    }
+
+    [Fact]
+    public async Task ReplacementStopsIfLatestChangesDuringIngestion()
+    {
+        using var handler = new SetupHandler();
+        using var http = new HttpClient(handler);
+        var setup = new FileSearchSetup(Options, new TestCredential(), http);
+        await setup.ApplyAsync(Products, StatePath, default);
+        int originalPolls = handler.Polls;
+        handler.OnPoll = () =>
+        {
+            if (handler.Polls == originalPolls + 2)
+            {
+                handler.LatestVersion = "another-version";
+            }
+        };
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyReplacementAsync(ReplacementProducts, Products, StatePath, ExpandedStatePath, default));
+        Assert.Equal(0, handler.AgentVersionCreates);
+        Assert.True(File.Exists(ExpandedStatePath));
+    }
+
+    [Fact]
+    public async Task ReplacementUnknownVersionWriteBlocksRetry()
+    {
+        using var handler = new SetupHandler();
+        using var http = new HttpClient(handler);
+        var setup = new FileSearchSetup(Options, new TestCredential(), http);
+        await setup.ApplyAsync(Products, StatePath, default);
+        handler.FailVersion = true;
+
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            setup.ApplyReplacementAsync(ReplacementProducts, Products, StatePath, ExpandedStatePath, default));
+        int requests = handler.Requests;
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyReplacementAsync(ReplacementProducts, Products, StatePath, ExpandedStatePath, default));
+        Assert.Equal(requests, handler.Requests);
+        Assert.Equal(1, handler.AgentVersionCreates);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_directory))
@@ -357,6 +502,7 @@ public sealed class FileSearchSetupTests : IDisposable
         public Action? OnPoll { get; set; }
         public JsonElement Definition { get; private set; }
         public Dictionary<string, JsonElement> Definitions { get; } = [];
+        public List<string> UploadedBodies { get; } = [];
         private readonly Dictionary<string, string> _storeNames = [];
         private readonly Dictionary<string, List<string>> _storeFiles = [];
 
@@ -388,6 +534,7 @@ public sealed class FileSearchSetupTests : IDisposable
                 if (path.EndsWith("/files", StringComparison.Ordinal))
                 {
                     Uploads++;
+                    UploadedBodies.Add(await request.Content!.ReadAsStringAsync(cancellationToken));
                     return FailUpload ? Json("""{"error":{"message":"private provider failure"}}""", HttpStatusCode.ServiceUnavailable) :
                         Json($$"""{"id":"file_{{Uploads}}","object":"file","bytes":12,"created_at":1,"filename":"guide.md","purpose":"assistants","status":"processed"}""");
                 }

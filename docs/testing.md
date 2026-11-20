@@ -23,6 +23,16 @@ unexpected remote membership and untracked agents cannot be adopted.
 Versioning tests also cover baseline preservation, repeated runs, changed
 baseline files, latest-version checks and uncertain version-write recovery.
 The expanded-version command has not been exercised against the live service.
+The replacement path has focused offline tests for fictional-only uploads,
+baseline protection, state binding, cancellation, failed ingestion, latest
+changes and uncertain version writes. Offline success does not establish
+live replacement behavior or PDF ingestion.
+
+The approved live replacement indexed 20 fictional files and verified the
+version `2` definition and membership. A repeated setup preserved both state
+files; the local host is pinned to version `2` and its health checks passed.
+No version `2` model request has been sent; manual grounding and citation
+verification remain pending.
 
 Citation tests preserve file IDs across provider mapping and chat/history
 state, remove repeated annotations, and render labels as encoded text without
