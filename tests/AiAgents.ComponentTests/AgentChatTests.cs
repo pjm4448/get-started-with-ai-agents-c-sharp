@@ -22,12 +22,14 @@ public sealed class AgentChatTests
         test.SaveExisting(test.Owner.Current.Marker);
         var citation = new Citation("<product>.md", null, "file_private");
         test.Backend.History =
-            [new ConversationHistoryMessage("answer", ConversationMessageRole.Assistant, "Answer", [citation, citation])];
+            [new ConversationHistoryMessage("answer", ConversationMessageRole.Assistant,
+                "Answer \uE200filecite\uE202turn0file0.", [citation, citation])];
 
         var cut = test.Context.Render<AgentChat>();
 
         cut.WaitForAssertion(() => Assert.True(test.Workspace.IsInitialized));
         Assert.Equal("<product>.md", cut.Find(".citations li").TextContent);
+        Assert.Equal("Answer .", cut.Find(".message-text").TextContent);
         Assert.Single(cut.FindAll(".citations li"));
         Assert.Empty(cut.FindAll(".citations a"));
         Assert.DoesNotContain("file_private", cut.Markup);

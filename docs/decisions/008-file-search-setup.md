@@ -94,7 +94,8 @@ a repeat run verified the same resources and pinned agent version. Five
 approved synthetic requests in the local signed-in UI verified grounding,
 source labels, follow-up, refresh, cancellation and recovery. One answer
 included a raw citation marker in its text despite displaying the correct
-source label. Further citation-presentation work remains; this check does not
+source label. A subsequent offline-tested presentation fix hides the observed
+pattern, but other marker formats remain unverified. This check does not
 establish least-privilege runtime access or production readiness.
 
 ## References

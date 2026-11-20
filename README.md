@@ -36,8 +36,8 @@ The retrieval milestone now has an offline-tested
 product samples. With explicit approval, these were ingested and a separate
 pinned retrieval agent was verified and selected on this workstation. The
 working text-only agent remains available for rollback. Live grounded chat has
-been verified with the two samples; one answer exposed a raw citation marker
-alongside the correct source label. Citation file identities are preserved in typed
+been verified with the two samples; an observed raw citation marker is now
+hidden by an offline-tested presentation fix. Citation file identities are preserved in typed
 stream/history state; the UI still shows encoded source labels, not file links.
 
 The stable Foundry package still exposes experimental Responses APIs. Their

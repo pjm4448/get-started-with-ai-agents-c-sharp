@@ -6,9 +6,10 @@ reviewed files were ingested into a vector store and the separate
 workstation. A repeat setup verified existing resources. The workstation now
 opts in to this agent; the original text-only agent remains available for
 rollback. Building or starting the application never uploads sample documents.
-One live answer included an unformatted provider citation marker in its text;
-the separately displayed source label was correct. Presentation of that marker
-remains an open limitation.
+One live answer included an unformatted citation marker in its text; the
+separately displayed source label was correct. The transcript now hides the
+recognized marker pattern, including the observed missing closing delimiter.
+This presentation fix is verified offline, not with a new live model request.
 
 ## Initial corpus and prerequisites
 
@@ -138,6 +139,10 @@ Source labels are encoded text. File IDs remain in typed state but are not
 displayed or converted into invented download links. Duplicate annotations
 are removed during streaming and history restoration. Existing generic tool
 progress, cancellation, ownership and no-generative-retry behavior remain.
+The transcript removes recognized file-citation markers from assistant text
+for display, including across streaming chunks and restored history. The
+underlying text is unchanged. Unrecognized marker formats remain visible;
+the Sources list, not the marker text, identifies the cited files.
 
 To roll back on this workstation, restore `Foundry:AgentName=aiagents-chat`
 and its previously verified `Foundry:AgentVersion=1` using the same two named
@@ -160,8 +165,9 @@ the blanket's three-year warranty and 45-day guarantee, source labels,
 follow-up context, an absent serial number, history after refresh, cancellation
 with partial output and recovery in a new chat. Four responses completed; one
 was canceled. One comparison answer displayed a raw citation marker alongside
-the correct source label. This observation does not establish that all
-citations or provider-generated markers are rendered cleanly.
+the correct source label. The later presentation fix has offline regression
+coverage; these live checks predate it and do not establish that every
+provider marker format is rendered cleanly.
 
 Mocked tests establish mapping, ingestion and UI behavior, not actual grounding,
 quality, least privilege or multi-user document authorization.

@@ -36,7 +36,9 @@ user-approved live setup ingested both files, verified the pinned
 Five approved synthetic browser requests verified cited sample facts, follow-up,
 missing-information handling, refresh, cancellation and recovery. One answer
 showed a raw citation marker alongside its source label; rendering that marker
-remains a limitation. Live success does not establish least privilege.
+was subsequently fixed and verified with offline transcript and restored-history
+tests, without another model request. Unrecognized marker formats can still be
+visible. Live success does not establish least privilege.
 
 From the repository root, validate the initial two-file corpus without Azure:
 

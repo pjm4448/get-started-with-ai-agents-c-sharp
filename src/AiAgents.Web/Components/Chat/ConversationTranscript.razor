@@ -8,11 +8,14 @@
     else
     {
         <ol class="messages">
-            @foreach (var message in Messages)
+            @for (int index = 0; index < Messages.Count; index++)
             {
+                var message = Messages[index];
                 <li class="message">
                     <strong>@GetRoleLabel(message.Role)</strong>
-                    <div class="message-text">@message.Text</div>
+                    <div class="message-text">@(message.Role == ChatMessageRole.Assistant
+                        ? FileCitationMarkerFormatter.Format(message.Text, Status == ConversationStatus.Responding && index == Messages.Count - 1)
+                        : message.Text)</div>
                     @if (message.Citations.Count > 0)
                     {
                         <div class="citations">
