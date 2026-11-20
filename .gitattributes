@@ -1,2 +1,4 @@
 # Keep the approved source document bytes stable for manifest verification.
 samples/products/product_info_*.md -text
+# Keep fictional sample bytes stable for manifest verification.
+samples/fictional/demo-*.md -text

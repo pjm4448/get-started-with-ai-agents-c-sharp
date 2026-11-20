@@ -3,7 +3,8 @@
 The initial grounding corpus contains two unchanged Markdown documents from
 `Azure-Samples/get-started-with-ai-agents`, audited source commit
 `abf8f3dabb2c30c004e9851dde0dc10f98aee6b3`. Their original names are retained.
-The source MIT license and copyright notice are included in [LICENSE](LICENSE).
+The source MIT notice is currently absent from this directory. Retain the
+source copyright and permission notice before redistributing these documents.
 No separate asset license or conflicting notice was found in these two files.
 
 | Document | Reviewed facts for live verification |
@@ -25,6 +26,8 @@ PDF text extraction is not a visual or OCR review. The documents remain
 deferred pending individual decisions and rights/provenance checks, not
 silently omitted from migration parity. See the
 [file-by-file review](../../docs/migration/product-corpus-review.md).
+Newly written [fictional samples](../fictional/README.md) are available
+separately without copying the additional source documents.
 
 ## Example questions
 

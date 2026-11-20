@@ -14,10 +14,18 @@ This presentation fix is verified offline, not with a new live model request.
 ## Initial corpus and prerequisites
 
 The [reviewed samples](../samples/products/README.md) contain two unchanged
-source Markdown documents, their MIT notice and a SHA-256 manifest. The other
+source Markdown documents and a SHA-256 manifest. The source MIT notice is
+currently absent and must be retained before redistributing the source files.
+The other
 18 source documents have been reviewed but remain deferred pending individual
 decisions and rights/provenance checks. These are sample
 claims, not verified product, contact or safety guidance.
+
+A separate [fictional sample corpus](../samples/fictional/README.md) is
+available for offline validation. It is not part of the current live agent.
+The current version-update command requires retaining the old baseline, so it
+cannot use the fictional corpus as a complete replacement without a reviewed
+setup change.
 
 Use the configured workstation's .NET 10 SDK and developer Azure credentials
 for the same tenant/project as local chat. Web sign-in does not authenticate
