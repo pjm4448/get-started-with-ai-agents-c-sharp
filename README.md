@@ -90,6 +90,27 @@ successful sign-in displays the disabled chat shell, not a working agent.
 
 ### Optional Foundry configuration
 
+The development Foundry account uses a default-deny public firewall with two
+explicit IPv4 host addresses supplied through the local azd environment as
+`FOUNDRY_ALLOWED_IP_1` and `FOUNDRY_ALLOWED_IP_2`. Set both to trusted public
+IPv4 addresses before provisioning; do not commit environment-specific
+addresses. The template checks only the length of these values, not whether
+they are distinct IPv4 hosts. Before provisioning, validate the intended
+values independently with PowerShell 7:
+
+```powershell
+pwsh -NoProfile -File .\scripts\validate-foundry-ip-addresses.ps1 -First '1.1.1.1' -Second '8.8.8.8'
+```
+
+Replace the example addresses with the two intended public IPv4 addresses. This
+check does not read or verify the azd environment and does not establish that
+the addresses are publicly routable; confirm both values and the environment
+configuration separately.
+Access from other networks, including some Azure services or portal
+flows, can be blocked. If the client IP changes, update and revalidate the
+network rules before provisioning the change. Network access does not replace
+Entra authorization.
+
 Leave chat disabled until the Azure project, agent, permissions and processing
 residency are approved. After that setup, supply the existing
 project's HTTPS endpoint, agent name and explicit agent version through

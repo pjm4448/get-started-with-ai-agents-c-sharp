@@ -1,6 +1,6 @@
 # Azure deployment plan
 
-Status: Validation blocked - Foundry network policy
+Status: Validation blocked - local azd environment access
 
 On 2026-11-19 the user approved preparing and locally compiling the minimal
 Bicep while subscription-specific pricing and runtime conversation permissions
@@ -388,6 +388,19 @@ Provisioned throughput or another commitment is not proposed.
 
 ## Validation proof and blocker
 
+- The Foundry template now specifies deny-by-default network ACLs, two
+  required address parameters, and no trusted-service bypass. Local Bicep lint,
+  compilation, and template contract checks pass. The string length constraints
+  do not prove that the values are distinct IPv4 hosts; an independent
+  input-validation script checks their syntax and distinctness. It does not
+  read the azd environment or establish public routability. Verify the actual
+  environment inputs before any provisioning. No post-change Azure validation or policy
+  compliance result has been established.
+- Access to the local azd environment values was denied by the execution
+  permission system. Do not retry or bypass that denial. Environment
+  configuration, substitution checks, preview, Azure validation and deployment
+  are blocked until the user resolves the access issue. No new Azure resources,
+  role assignments, agents or live model requests were created in this step.
 - On 2026-11-19 the local Bicep lint, compilation and template checks passed;
   Azure CLI ARM validation returned `Succeeded`. The azd provision preview
   showed only the new resource group, account, model deployment and project.
@@ -403,10 +416,10 @@ Provisioned throughput or another commitment is not proposed.
   action other than `Deny`. The current unrestricted public Bicep would
   therefore be reported noncompliant. Resolve this policy issue before
   provisioning; an ARM validation success is not proof of audit compliance.
-- The user preferred unrestricted public access and did not provide an IP
-  allowlist. No subscription-scope policy exemptions were found. Provisioning
-  remains blocked until a policy-compliant network design or an authorized
-  exemption is in place; no policy or role changes were made.
+- At the time of that assessment the user had not provided an IP allowlist.
+  No subscription-scope policy exemptions were found. The user has since
+  supplied two addresses for local configuration; the changed template still
+  requires fresh validation and policy evaluation.
 - The Azure MCP policy query failed because its credential used the wrong
   tenant. The explicitly scoped Azure CLI policy query succeeded instead.
 

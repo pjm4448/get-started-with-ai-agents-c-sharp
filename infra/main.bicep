@@ -35,6 +35,16 @@ param modelSku string = 'GlobalStandard'
 @minValue(1)
 param modelCapacity int
 
+@description('First allowed public IPv4 address for Foundry data-plane access.')
+@minLength(7)
+@maxLength(15)
+param allowedIpAddress1 string
+
+@description('Second allowed public IPv4 address for Foundry data-plane access.')
+@minLength(7)
+@maxLength(15)
+param allowedIpAddress2 string
+
 @description('Non-secret tags applied to resources.')
 param tags object = {}
 
@@ -56,6 +66,8 @@ module foundry './modules/foundry.bicep' = {
     modelVersion: modelVersion
     modelSku: modelSku
     modelCapacity: modelCapacity
+    allowedIpAddress1: allowedIpAddress1
+    allowedIpAddress2: allowedIpAddress2
     tags: tags
   }
 }

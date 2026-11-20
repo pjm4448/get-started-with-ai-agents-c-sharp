@@ -9,6 +9,8 @@
     "projectName": { "value": "${AZURE_AI_PROJECT_NAME}" },
     "modelDeploymentName": { "value": "${AZURE_AI_MODEL_DEPLOYMENT_NAME}" },
     "modelCapacity": { "value": 10 },
+    "allowedIpAddress1": { "value": "${FOUNDRY_ALLOWED_IP_1}" },
+    "allowedIpAddress2": { "value": "${FOUNDRY_ALLOWED_IP_2}" },
     "tags": {
       "value": { "azd-env-name": "${AZURE_ENV_NAME}" }
     }

@@ -8,6 +8,8 @@ param modelName string
 param modelVersion string
 param modelSku string
 param modelCapacity int
+param allowedIpAddress1 string
+param allowedIpAddress2 string
 param tags object
 
 resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
@@ -25,6 +27,18 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
     customSubDomainName: accountName
     disableLocalAuth: true
     publicNetworkAccess: 'Enabled'
+    networkAcls: {
+      defaultAction: 'Deny'
+      bypass: 'None'
+      ipRules: [
+        {
+          value: allowedIpAddress1
+        }
+        {
+          value: allowedIpAddress2
+        }
+      ]
+    }
   }
   tags: tags
 }
