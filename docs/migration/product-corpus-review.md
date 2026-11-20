@@ -15,6 +15,62 @@ Markdown files. The [source pull request](https://github.com/Azure-Samples/get-s
 describes converting some Markdown files to PDF, but does not establish
 authorship or independent rights clearance for the underlying material.
 
+## Rights investigation
+
+- The [source MIT license](https://github.com/Azure-Samples/get-started-with-ai-agents/blob/abf8f3dabb2c30c004e9851dde0dc10f98aee6b3/LICENSE)
+  permits redistribution subject to retaining its copyright and permission
+  notice. This is relevant evidence, not an independent confirmation that
+  every embedded asset is owned or licensed by the repository's contributors.
+- The [contribution policy](https://github.com/Azure-Samples/get-started-with-ai-agents/blob/abf8f3dabb2c30c004e9851dde0dc10f98aee6b3/CONTRIBUTING.md)
+  describes a contributor license agreement for most contributions.
+  The public checks for
+  [Azure-Samples/get-started-with-ai-agents#208](https://github.com/Azure-Samples/get-started-with-ai-agents/pull/208)
+  include a successful `license/cla` check. The checks returned for
+  [Azure-Samples/get-started-with-ai-agents#99](https://github.com/Azure-Samples/get-started-with-ai-agents/pull/99)
+  did not expose a CLA result. Neither result independently verifies the
+  provenance of each document's contents.
+- No separate asset notice was identified in the source tree or extracted
+  text. The PDF parser checks described below cannot rule out hidden notices
+  or content. Existing source issue searches did not locate a clarification.
+
+The source maintainer or another authorized rights holder must confirm that
+the individual assets and any embedded third-party material can be
+redistributed. Do not treat this assessment as legal clearance. The source
+[support policy](https://github.com/Azure-Samples/get-started-with-ai-agents/blob/abf8f3dabb2c30c004e9851dde0dc10f98aee6b3/SUPPORT.md)
+directs project questions to its issue tracker. With user approval,
+[Azure-Samples/get-started-with-ai-agents#246](https://github.com/Azure-Samples/get-started-with-ai-agents/issues/246)
+requests clarification; a response is pending.
+
+## Safety and factual resolution
+
+The files contain contradictory or unverified sample assertions. No
+manufacturer-authoritative specifications, instructions or test reports
+were identified for these specific products. A general safety standard cannot
+determine which conflicting, product-specific assertion is correct.
+
+- **Stoves (6, 13, 20):** defer fuel, ignition and operating assertions until
+  the exact product and its authoritative instructions can be established.
+  The [CPSC camping-equipment safety page](https://www.cpsc.gov/safety-education/safety-guides/sports-fitness-and-recreation/carbon-monoxide-poisoning-camping)
+  identifies relevant general hazards; it does not validate these products.
+- **Sleeping bags (7, 14):** do not treat temperature, warranty or conflicting
+  storage assertions as established. The published
+  [ISO 23537-1:2022 scope](https://www.iso.org/standard/82789.html) describes
+  test and labelling requirements for certain adult sleeping bags; no test
+  evidence for these samples was found.
+- **Other physical-performance claims (4, 5, 8, 15, 16, 17, 18, 19):** defer
+  unverified water protection, loading, capacity or related claims until
+  product-specific evidence exists. Unrelated or conflicting reviews do not
+  resolve those claims.
+- **Care, feature and policy claims (3, 9, 10, 11, 12):** resolve conflicting
+  care, feature, category or warranty descriptions against an authoritative
+  source; otherwise do not present them as verified.
+
+These are containment decisions, **not corrections or safety certification**.
+The original files are unchanged. A future corrected or independently authored
+corpus would require its own review, hash manifest and approval; a warning or
+prompt instruction alone cannot guarantee that an agent will not repeat
+unsafe source content.
+
 The Markdown text was reviewed directly. PDF review used extracted text from
 every page and inspected metadata, page images and attachments exposed by the
 parser. It reported minor cross-reference warnings, and no page images or
