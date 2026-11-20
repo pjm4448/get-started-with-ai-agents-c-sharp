@@ -114,12 +114,57 @@ host; do not fix them by changing machine-wide trust or weakening application
 authentication. Failed UI waits include the expected locator/state in the test
 output. Only synthetic data should be added to these fixtures.
 
+## Live development verification
+
+On 2026-11-20 the provisioned East US project and gpt-5-mini GlobalStandard
+deployment were verified with the text-only `aiagents-chat` prompt agent,
+pinned to its returned version `1`. The saved definition was read back:
+kind `prompt`, deployment `gpt-5-mini`, and no tools.
+
+The actual credential factory registered by the web application was used to
+acquire a token; its tenant and principal matched the approved developer
+identity without logging the token. This identity has inherited privileged
+roles. It is not evidence that a least-privilege runtime principal can perform
+the same operations. A non-inference check through the real application adapter
+created and restored an empty synthetic conversation, preserved its owner
+marker and read its history.
+
+The user completed real Entra sign-in in the integrated browser at
+`https://localhost:7124`. Four synthetic model requests then verified:
+
+| Check | Observed result |
+| --- | --- |
+| Initial response | Actual model text, completion status and token usage appeared in the signed-in Blazor UI. |
+| Follow-up | The model recalled a synthetic marker in the same conversation. |
+| Refresh | Both exchanges were restored without resubmitting a prompt. |
+| Streaming and cancellation | Partial text was observed before completion; Stop preserved it and displayed the canceled state. Send was disabled and the UI required New chat rather than retrying. |
+| Recovery | New chat cleared the previous local transcript; a new request completed successfully. |
+
+The local HTTPS host also returned 200 from `/alive` and `/health`, and an
+anonymous root request redirected to Entra. These probes are host-health
+checks, not ongoing model-connectivity checks. The host retained normal TLS
+certificate validation. No application source changes, added role assignments,
+manual identity creation or authentication bypass were needed. Foundry
+automatically generated its managed agent identity/blueprint during saved-agent
+creation; no roles were granted to it by this setup.
+
+The four-request verification allowance is exhausted. Further automated
+inference testing needs new approval; ordinary user-driven chat is separately
+initiated by the user. Test conversations remain in Foundry, and New chat
+does not delete them. No remote deletion or billing-stop claim is made.
+
+Restart and disable instructions are in the [local setup](../README.md#local-startup).
+The environment-specific endpoint and enabled flag are stored only in local
+.NET user-secrets; committed configuration keeps chat disabled.
+
 ## Remaining verification
 
-These journeys do not establish real Entra sign-in/certificate redemption,
-live Foundry SDK compatibility, Azure RBAC permissions/denials, remote
-cancellation or billing behavior, network-interruption/reconnect semantics,
+The offline journeys do not establish live service behavior; the manual
+development results above cover only the operations actually observed.
+Isolated least-privilege Azure RBAC permissions/denials, live multi-user
+ownership denial, live cross-tab sign-out revocation, remote cancellation or
+billing behavior, network-interruption/reconnect semantics,
 screen-reader usability, a complete accessibility audit, browser-engine
-portability or production cross-replica behavior. Recheck real browser sign-in
-and sign-out on the configured development host separately. Live Azure
+portability and production cross-replica behavior remain unverified.
+Live Azure
 verification still requires explicit resource, cost and residency approval.

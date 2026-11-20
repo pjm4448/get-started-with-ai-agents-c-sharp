@@ -1,13 +1,16 @@
 # Azure deployment plan
 
-Status: Infrastructure provisioned - awaiting saved-agent approval
+Status: Local chat verified - development only
 
 On 2026-11-19 the user approved preparing and locally compiling the minimal
 Bicep while subscription-specific pricing and runtime conversation permissions
 remain unresolved. The user subsequently approved validation and provisioning
 of a new resource group, Foundry account and project, and model deployment.
-This does not authorize role assignments, saved-agent creation, enabling chat
-or model requests.
+That infrastructure approval did not authorize role assignments, saved-agent
+creation, enabling chat or model requests. On 2026-11-20 the user separately
+approved the local-chat plan: existing developer credentials, a text-only saved
+agent, local activation and up to four synthetic model requests. Isolated
+least-privilege testing was explicitly deferred; no new roles were approved.
 
 ## Scope
 
@@ -82,7 +85,8 @@ production delivery remain later migration phases, not omitted capabilities.
   documented in [ADR 003](../docs/decisions/003-foundry-invocation-sdk.md).
 - The adapter and ownership-aware UI are offline-tested. Provider registration
   is available only through explicit Development opt-in; the committed chat
-  default remains disabled. No live integration has been activated.
+  default remains disabled. Local user-secrets now opt into the verified live
+  integration, as recorded below.
 
 ## Proposed first-live topology
 
@@ -395,6 +399,46 @@ Provisioned throughput or another commitment is not proposed.
 
 ## Section 7: Validation Proof
 
+### Local chat verification: 2026-11-20
+
+- The user approved using the existing developer identity without new role
+  assignments or manually created identities. The actual TokenCredential
+  factory registered by AgentChatRegistration selected the approved tenant
+  and developer principal. Token contents were not logged.
+- The real FoundryAgentClient created an empty synthetic conversation,
+  restored its owner metadata and read its empty history without inference.
+- Documented REST v1 agent authoring created aiagents-chat, returned version
+  1, and readback confirmed kind prompt, model gpt-5-mini and zero tools.
+  No runtime authoring capability or new application dependency was added.
+- Foundry automatically generated agent-instance and managed-blueprint
+  identity metadata during agent creation. No separate identity creation was
+  requested and no project role assignments were present on a follow-up check.
+- Only Foundry:ProjectEndpoint, Foundry:AgentName, Foundry:AgentVersion and
+  Chat:Enabled were set in existing local .NET user-secrets. Existing Entra
+  and certificate settings were preserved; no full secret/environment dump
+  was performed.
+- The real HTTPS launch profile starts successfully. Trusted-TLS health and
+  liveness checks return 200; an anonymous root request returns an Entra
+  redirect. The user completed real browser sign-in.
+- Four synthetic requests through the actual Blazor UI confirmed initial
+  completion and usage, follow-up marker continuity, cancellation after
+  partial streamed text, and successful recovery in a new conversation.
+  Refresh restored both completed exchanges without prompt resubmission.
+- During cancellation 125 characters were observed before Stop and 145
+  remained afterward. The UI showed Response canceled, disabled Send, and
+  required New chat rather than retrying. This proves client-side streamed
+  cancellation behavior, not remote compute or billing termination.
+- The four-request allowance is exhausted. No further automated inference is
+  authorized by this milestone. Live least-privilege denials, multi-user access,
+  cross-tab sign-out revocation and interruption/reconnect remain separate
+  verification gaps. No production readiness claim is made.
+- No application source changes were necessary. The local host is running
+  for user interaction; its configuration persists across normal restarts.
+- Focused offline Foundry streaming and conversation tests passed: 31 passed,
+  zero failures or skips. The zero-Python scan and whitespace checks passed.
+  The temporary verification harness was kept outside the repository and
+  removed after use; no token or browser session was exported.
+
 ### Provisioning verification: 2026-11-20
 
 - The recovery `azd provision --environment aiagents-dev-9af44b45d7 --no-prompt`
@@ -529,9 +573,10 @@ Provisioned throughput or another commitment is not proposed.
   tenant. The explicitly scoped Azure CLI policy query succeeded instead.
 
 Current outcome: the dedicated resource group, Foundry account, project and
-model are provisioned. The local azd environment exists. No agent or role
-assignment was created; chat remains disabled, production startup remains
-blocked, and no chargeable model request was made.
+model are provisioned. The text-only saved agent is pinned to version 1 and
+real local chat is verified. Local user-secrets enable chat; committed
+configuration remains disabled. Four synthetic model requests were made.
+No role assignments were created; production startup remains blocked.
 
 ## References
 

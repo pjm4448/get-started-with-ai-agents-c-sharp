@@ -2,7 +2,7 @@
 
 This migration is in progress. The web application now starts in Development
 with Entra sign-in required for its pages and Blazor connections. Ownership-aware
-chat is wired behind `Chat:Enabled=false` and tested offline; there is no
+chat defaults to `Chat:Enabled=false` in committed configuration; there is no
 simulated agent fallback. Production startup remains explicitly blocked until
 integration and deployment validation are complete.
 
@@ -22,11 +22,14 @@ history. Missing, unowned and other-user conversations are uniformly denied;
 legacy conversations are never adopted. See the
 [ownership decision and limitations](docs/decisions/005-conversation-ownership.md).
 Source audit gates, approved project/model/agent configuration, required Azure
-permissions and live service verification remain prerequisites for a working
-live chat. The development Foundry account, project and gpt-5-mini
+permissions and live service verification are required for each environment.
+The development Foundry account, project and gpt-5-mini
 GlobalStandard deployment have now been provisioned in East US with restricted
-IP access. Saved-agent creation and live chat verification remain pending;
-chat is still disabled.
+IP access. The text-only `aiagents-chat` agent, pinned to version `1`, has been
+created and verified through real local browser chat. This workstation opts
+in through .NET user-secrets; other environments remain disabled by default.
+The verified developer credential is privileged, not a least-privilege
+production runtime identity.
 
 The stable Foundry package still exposes experimental Responses APIs. Their
 isolated use was explicitly approved; see the
@@ -72,8 +75,9 @@ cannot use the revoked session for further conversation operations.
 
 **Restarting the host requires signing in again.** Existing cookies from before
 this update are also rejected rather than adopted. Repeat the browser sign-in
-and sign-out check after updating. Offline tests cover the new ticket lifecycle,
-but browser interaction with this change has not yet been reverified. A shared
+and sign-out check after updating. Real browser Entra sign-in has been reverified
+with the current ticket lifecycle; cross-tab revocation remains covered by the
+offline browser suite, not a new live multi-user test. A shared
 session store and cross-replica cancellation are required before production;
 see the [local session decision](docs/decisions/006-local-session-revocation.md).
 
@@ -88,8 +92,10 @@ dotnet run --project src\AiAgents.Web --configuration Release --launch-profile h
 
 Open `https://localhost:7124`. Use the HTTPS profile to match the registered
 sign-in redirect URI. The development HTTPS certificate must be trusted;
-do not bypass certificate validation. With the committed configuration,
-successful sign-in displays the disabled chat shell, not a working agent.
+do not bypass certificate validation. On the configured workstation,
+successful sign-in now opens working text-only chat using local user-secrets.
+With committed configuration alone, sign-in still displays the disabled chat
+shell until the Foundry settings below are supplied.
 
 ### Optional Foundry configuration
 
@@ -135,6 +141,33 @@ are excluded for this Development-only path. Website sign-in does not sign in
 the Azure SDK, and neither sign-in grants missing Foundry permissions.
 There is no production credential fallback.
 
+For an already-created and reviewed agent, configure these named values only:
+
+```powershell
+dotnet user-secrets set "Foundry:ProjectEndpoint" "https://YOUR-ACCOUNT.services.ai.azure.com/api/projects/YOUR-PROJECT" --project .\src\AiAgents.Web
+dotnet user-secrets set "Foundry:AgentName" "aiagents-chat" --project .\src\AiAgents.Web
+dotnet user-secrets set "Foundry:AgentVersion" "1" --project .\src\AiAgents.Web
+dotnet user-secrets set "Chat:Enabled" "true" --project .\src\AiAgents.Web
+```
+
+Replace the example endpoint and agent/version with values read back from
+your approved project. These commands do not create an agent or grant access.
+The configured workstation already has its verified values; do not overwrite
+them with the example endpoint. Restart the host after configuration changes.
+Do not dump the full user-secrets store or azd environment to troubleshoot
+individual settings.
+
+To disable local live chat, preserve the existing sign-in configuration and run:
+
+```powershell
+dotnet user-secrets set "Chat:Enabled" "false" --project .\src\AiAgents.Web
+```
+
+Restart the host to apply the change. To clear a chat in the browser, use
+**New chat**; it clears the local bookmark and transcript, not remote history.
+Sending messages incurs model usage and may retain conversations in Foundry.
+Use synthetic data for this development setup.
+
 Opening chat or selecting **New chat** does not create a remote conversation.
 The first valid message creates one. The browser stores only its protected ID
 in per-tab session storage, separated by the server-resolved owner. Refresh
@@ -160,6 +193,13 @@ copied-cookie rejection after sign-out, expired-session rejection, actual
 WebSocket closure at session expiration, disabled-chat isolation, enabled-chat
 configuration validation, provider-free prerender and blocked Production
 startup without calling live Azure services.
+
+Real browser verification additionally confirmed signed-in streaming and
+completion, follow-up context, owned-history restoration after refresh,
+partial-output preservation on **Stop response**, and successful **New chat**
+recovery. Four synthetic model requests were used; no runtime source-code
+change was needed. Cancellation does not establish that remote computation
+or billing stopped. See [live verification and limitations](docs/testing.md#live-development-verification).
 
 The Aspire AppHost composes the web project for local development.
 The [ServiceDefaults library](src/AiAgents.ServiceDefaults/Extensions.cs) now
