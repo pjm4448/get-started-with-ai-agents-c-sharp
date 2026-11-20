@@ -15,7 +15,8 @@ This presentation fix is verified offline, not with a new live model request.
 
 The [reviewed samples](../samples/products/README.md) contain two unchanged
 source Markdown documents, their MIT notice and a SHA-256 manifest. The other
-18 source documents remain deferred for detailed review. These are sample
+18 source documents have been reviewed but remain deferred pending individual
+decisions and rights/provenance checks. These are sample
 claims, not verified product, contact or safety guidance.
 
 Use the configured workstation's .NET 10 SDK and developer Azure credentials
@@ -114,6 +115,27 @@ resources. It does not select latest or adopt an unrelated existing agent.
   corpus changes or replacing an existing agent require explicit review.
 - Do not copy one state file between environments or use multiple independent
   states to create the same agent.
+
+### Preparing an expanded version
+
+The setup tool also provides an **offline-tested, not yet live-verified**
+`apply-version` command. It requires a separately reviewed manifest containing
+the unchanged baseline files plus at least one additional file, the original
+baseline manifest and state, and a distinct new state:
+
+```powershell
+dotnet run --project .\tools\AiAgents.Setup -- apply-version <expanded-manifest.json> .\samples\products\manifest.json .\.local\products-state.json <new-state.json> --approve-upload --approve-agent-version
+```
+
+Replace the placeholder paths before use. Both flags require prior explicit
+approval for the exact files, remote retention and agent-version creation.
+The command rechecks the baseline store, pinned definition and latest version,
+creates a separate store and checkpoints each write. It does not modify the
+baseline state, switch local chat or send a model request. Creating a version
+can change the agent's `latest` pointer for other clients. Local locks cannot
+prevent changes made from another machine, and the latest check and version
+creation are not atomic; coordinate other writers before using this command.
+An uncertain write requires manual reconciliation, not an automatic retry.
 
 Server failures are logged by exception type/HTTP status without provider
 response bodies. Safe local setup diagnostics identify manifest/readiness

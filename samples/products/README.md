@@ -19,9 +19,12 @@ Git attributes preserve the source bytes across operating systems; ordinary
 manifest JSON whitespace does not change the setup-state fingerprint.
 
 The other seven Markdown and eleven PDF source documents are **not included**.
-Their metadata and extracted text were scanned, but detailed review remains
-open. Some contain inconsistent care guidance and unrelated reviews. They are
-deferred, not silently omitted from migration parity.
+Their text and PDF metadata were reviewed; some contain contradictory
+safety-sensitive guidance, unsupported specifications or unrelated reviews.
+PDF text extraction is not a visual or OCR review. The documents remain
+deferred pending individual decisions and rights/provenance checks, not
+silently omitted from migration parity. See the
+[file-by-file review](../../docs/migration/product-corpus-review.md).
 
 ## Example questions
 

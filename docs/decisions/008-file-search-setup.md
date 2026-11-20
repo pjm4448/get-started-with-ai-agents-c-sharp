@@ -54,6 +54,12 @@ before and after the request. If its result is uncertain, future runs stop
 for manual reconciliation rather than risk duplicating a remote write.
 No automatic deletion, overwrite, role assignment or firewall change occurs.
 
+The separately approved versioning path preserves the original state and
+pinned version, and creates a new store with a distinct state. It checks the
+baseline and latest before creating the new version, but cannot atomically
+exclude external writers. Version creation may move the `latest` pointer.
+The path has offline fake-transport coverage and has not been exercised live.
+
 Runtime citations retain file IDs in application-owned models but display only
 encoded source labels. No download link or protected-file proxy is inferred
 from an ID. The sample corpus is shared approved data, not a demonstration of
@@ -83,7 +89,8 @@ the selected service's retention/residency before upload.
   bounded inference before live verification.
 - Record actual created IDs/version locally and verify factual answers plus
   citations in the real signed-in UI. Do not equate mocked tests with grounding.
-- Complete detailed review of the remaining 18 source documents.
+- Obtain individual decisions and resolve rights/provenance for the remaining
+  18 reviewed source documents before any copying or upload.
 - Implement optional Azure AI Search and isolated runtime-permission testing.
 - Revisit experimental APIs at dependency upgrades.
 

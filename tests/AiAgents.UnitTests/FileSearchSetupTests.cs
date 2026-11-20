@@ -11,7 +11,10 @@ public sealed class FileSearchSetupTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"aiagents-setup-{Guid.NewGuid():N}");
     private string StatePath => Path.Combine(_directory, "state.json");
+    private string ExpandedStatePath => Path.Combine(_directory, "expanded-state.json");
     private static VerifiedProducts Products => new(new string('A', 64), [new("guide.md", "Sample fact."u8.ToArray())]);
+    private static VerifiedProducts ExpandedProducts => new(new string('B', 64),
+        [new("guide.md", "Sample fact."u8.ToArray()), new("extra.pdf", "Another fact."u8.ToArray())]);
     private static FileSearchSetupOptions Options => new()
     {
         ProjectEndpoint = new Uri("https://test.services.ai.azure.com/api/projects/test"),
@@ -176,6 +179,149 @@ public sealed class FileSearchSetupTests : IDisposable
         Assert.Equal(0, handler.Writes);
     }
 
+    [Fact]
+    public async Task CreatesAndReusesExpandedVersionWithoutChangingBaseline()
+    {
+        using var handler = new SetupHandler();
+        using var http = new HttpClient(handler);
+        var setup = new FileSearchSetup(Options, new TestCredential(), http);
+        Assert.Equal("1", await setup.ApplyAsync(Products, StatePath, default));
+        string baseline = await File.ReadAllTextAsync(StatePath);
+
+        Assert.Equal("2", await setup.ApplyVersionAsync(ExpandedProducts, Products, StatePath, ExpandedStatePath, default));
+        int writes = handler.Writes;
+        Assert.Equal("2", await setup.ApplyVersionAsync(ExpandedProducts, Products, StatePath, ExpandedStatePath, default));
+
+        Assert.Equal(writes, handler.Writes);
+        Assert.Equal(3, handler.Uploads);
+        Assert.Equal(1, handler.AgentCreates);
+        Assert.Equal(1, handler.AgentVersionCreates);
+        Assert.Equal(baseline, await File.ReadAllTextAsync(StatePath));
+        Assert.Equal("vs_1", handler.Definitions["1"].GetProperty("tools")[0].GetProperty("vector_store_ids")[0].GetString());
+        Assert.Equal("vs_2", handler.Definitions["2"].GetProperty("tools")[0].GetProperty("vector_store_ids")[0].GetString());
+    }
+
+    [Fact]
+    public async Task RefusesChangedBaselineOrStaleLatestBeforeCreatingResources()
+    {
+        using var handler = new SetupHandler();
+        using var http = new HttpClient(handler);
+        var setup = new FileSearchSetup(Options, new TestCredential(), http);
+        await setup.ApplyAsync(Products, StatePath, default);
+        int writes = handler.Writes;
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyVersionAsync(ExpandedProducts, Products with { ManifestHash = new string('C', 64) },
+                StatePath, ExpandedStatePath, default));
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyVersionAsync(new VerifiedProducts(new string('B', 64),
+                [new("guide.md", "Changed fact."u8.ToArray())]), Products, StatePath, ExpandedStatePath, default));
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyVersionAsync(Products with { ManifestHash = new string('B', 64) },
+                Products, StatePath, ExpandedStatePath, default));
+        handler.UnexpectedFile = true;
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyVersionAsync(ExpandedProducts, Products, StatePath, ExpandedStatePath, default));
+        handler.UnexpectedFile = false;
+        handler.LatestVersion = "another-version";
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyVersionAsync(ExpandedProducts, Products, StatePath, ExpandedStatePath, default));
+
+        Assert.Equal(writes, handler.Writes);
+        Assert.False(File.Exists(ExpandedStatePath));
+    }
+
+    [Fact]
+    public async Task RechecksLatestAfterIngestionBeforeVersionWrite()
+    {
+        using var handler = new SetupHandler();
+        using var http = new HttpClient(handler);
+        var setup = new FileSearchSetup(Options, new TestCredential(), http);
+        await setup.ApplyAsync(Products, StatePath, default);
+        int originalPolls = handler.Polls;
+        handler.OnPoll = () =>
+        {
+            if (handler.Polls == originalPolls + 2)
+            {
+                handler.LatestVersion = "another-version";
+            }
+        };
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyVersionAsync(ExpandedProducts, Products, StatePath, ExpandedStatePath, default));
+
+        Assert.Equal(0, handler.AgentVersionCreates);
+        Assert.True(File.Exists(ExpandedStatePath));
+    }
+
+    [Fact]
+    public async Task RejectsSameStateAndChangedBaselineDefinitionBeforeWrites()
+    {
+        using var handler = new SetupHandler();
+        using var http = new HttpClient(handler);
+        var setup = new FileSearchSetup(Options, new TestCredential(), http);
+        await setup.ApplyAsync(Products, StatePath, default);
+        int requests = handler.Requests;
+        int writes = handler.Writes;
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyVersionAsync(ExpandedProducts, Products, StatePath, StatePath, default));
+        Assert.Equal(requests, handler.Requests);
+        handler.Definitions["1"] = JsonSerializer.Deserialize<JsonElement>(
+            """{"kind":"prompt","model":"different-model","instructions":"changed","tools":[]}""");
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyVersionAsync(ExpandedProducts, Products, StatePath, ExpandedStatePath, default));
+
+        Assert.Equal(writes, handler.Writes);
+        Assert.False(File.Exists(ExpandedStatePath));
+    }
+
+    [Fact]
+    public async Task ExpandedIngestionCancellationResumesWithoutDuplicateUploads()
+    {
+        using var handler = new SetupHandler();
+        using var http = new HttpClient(handler);
+        using var cancellation = new CancellationTokenSource();
+        var setup = new FileSearchSetup(Options, new TestCredential(), http);
+        await setup.ApplyAsync(Products, StatePath, default);
+        int originalPolls = handler.Polls;
+        handler.OnPoll = () =>
+        {
+            if (handler.Polls == originalPolls + 2)
+            {
+                cancellation.Cancel();
+            }
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            setup.ApplyVersionAsync(ExpandedProducts, Products, StatePath, ExpandedStatePath, cancellation.Token));
+        Assert.Equal(0, handler.AgentVersionCreates);
+        handler.OnPoll = null;
+        Assert.Equal("2", await setup.ApplyVersionAsync(ExpandedProducts, Products, StatePath, ExpandedStatePath, default));
+        Assert.Equal(3, handler.Uploads);
+        Assert.Equal(1, handler.AgentVersionCreates);
+    }
+
+    [Fact]
+    public async Task UncertainVersionCreationBlocksRetryWithoutAdditionalRequests()
+    {
+        using var handler = new SetupHandler();
+        using var http = new HttpClient(handler);
+        var setup = new FileSearchSetup(Options, new TestCredential(), http);
+        await setup.ApplyAsync(Products, StatePath, default);
+        handler.FailVersion = true;
+
+        await Assert.ThrowsAsync<HttpRequestException>(() =>
+            setup.ApplyVersionAsync(ExpandedProducts, Products, StatePath, ExpandedStatePath, default));
+        int requests = handler.Requests;
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            setup.ApplyVersionAsync(ExpandedProducts, Products, StatePath, ExpandedStatePath, default));
+
+        Assert.Equal(requests, handler.Requests);
+        Assert.Equal(1, handler.AgentVersionCreates);
+        Assert.Contains("create retrieval agent version", await File.ReadAllTextAsync(ExpandedStatePath));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_directory))
@@ -200,14 +346,19 @@ public sealed class FileSearchSetupTests : IDisposable
         public int Writes { get; private set; }
         public int Uploads { get; private set; }
         public int AgentCreates { get; private set; }
+        public int AgentVersionCreates { get; private set; }
         public int Polls { get; private set; }
         public string IndexingStatus { get; set; } = "completed";
         public bool FailUpload { get; init; }
         public bool AgentExists { get; set; }
         public bool UnexpectedFile { get; set; }
+        public bool FailVersion { get; set; }
+        public string LatestVersion { get; set; } = "1";
         public Action? OnPoll { get; set; }
         public JsonElement Definition { get; private set; }
-        private string StoreName { get; set; } = string.Empty;
+        public Dictionary<string, JsonElement> Definitions { get; } = [];
+        private readonly Dictionary<string, string> _storeNames = [];
+        private readonly Dictionary<string, List<string>> _storeFiles = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -219,20 +370,41 @@ public sealed class FileSearchSetupTests : IDisposable
                 if (path.EndsWith("/vector_stores", StringComparison.Ordinal))
                 {
                     using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
-                    StoreName = body.RootElement.GetProperty("name").GetString()!;
-                    return Json(Store());
+                    string storeId = $"vs_{_storeNames.Count + 1}";
+                    _storeNames.Add(storeId, body.RootElement.GetProperty("name").GetString()!);
+                    _storeFiles.Add(storeId, []);
+                    return Json(Store(storeId));
                 }
 
-                if (path.EndsWith("/vector_stores/vs_1/files", StringComparison.Ordinal))
+                if (path.Contains("/vector_stores/", StringComparison.Ordinal) && path.EndsWith("/files", StringComparison.Ordinal))
                 {
-                    return Json(VectorFile());
+                    string storeId = path.Split('/')[^2];
+                    using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
+                    string fileId = body.RootElement.GetProperty("file_id").GetString()!;
+                    _storeFiles[storeId].Add(fileId);
+                    return Json(VectorFile(storeId, fileId));
                 }
 
                 if (path.EndsWith("/files", StringComparison.Ordinal))
                 {
                     Uploads++;
                     return FailUpload ? Json("""{"error":{"message":"private provider failure"}}""", HttpStatusCode.ServiceUnavailable) :
-                        Json("""{"id":"file_1","object":"file","bytes":12,"created_at":1,"filename":"guide.md","purpose":"assistants","status":"processed"}""");
+                        Json($$"""{"id":"file_{{Uploads}}","object":"file","bytes":12,"created_at":1,"filename":"guide.md","purpose":"assistants","status":"processed"}""");
+                }
+
+                if (path.EndsWith("/agents/aiagents-products/versions", StringComparison.Ordinal))
+                {
+                    AgentVersionCreates++;
+                    if (FailVersion)
+                    {
+                        return Json("""{"error":{"message":"private provider failure"}}""", HttpStatusCode.ServiceUnavailable);
+                    }
+
+                    using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
+                    Definition = body.RootElement.GetProperty("definition").Clone();
+                    LatestVersion = "2";
+                    Definitions.Add(LatestVersion, Definition);
+                    return Json("""{"object":"agent.version","name":"aiagents-products","version":"2"}""");
                 }
 
                 if (path.EndsWith("/agents", StringComparison.Ordinal))
@@ -241,6 +413,7 @@ public sealed class FileSearchSetupTests : IDisposable
                     AgentExists = true;
                     using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
                     Definition = body.RootElement.GetProperty("definition").Clone();
+                    Definitions.Add("1", Definition);
                     return Json("""{"name":"aiagents-products","versions":{"latest":{"version":"1"}}}""");
                 }
             }
@@ -248,53 +421,64 @@ public sealed class FileSearchSetupTests : IDisposable
             {
                 if (path.EndsWith("/agents/aiagents-products", StringComparison.Ordinal))
                 {
-                    return Json("{}", AgentExists ? HttpStatusCode.OK : HttpStatusCode.NotFound);
+                    return Json(JsonSerializer.Serialize(new { versions = new { latest = new { version = LatestVersion } } }),
+                        AgentExists ? HttpStatusCode.OK : HttpStatusCode.NotFound);
                 }
 
-                if (path.EndsWith("/agents/aiagents-products/versions/1", StringComparison.Ordinal))
+                if (path.Contains("/agents/aiagents-products/versions/", StringComparison.Ordinal))
                 {
-                    return Json(JsonSerializer.Serialize(new { name = "aiagents-products", version = "1", definition = Definition }));
+                    string version = path.Split('/')[^1];
+                    return Json(JsonSerializer.Serialize(new { name = "aiagents-products", version, definition = Definitions[version] }));
                 }
 
-                if (path.EndsWith("/vector_stores/vs_1", StringComparison.Ordinal))
+                if (path.Contains("/vector_stores/", StringComparison.Ordinal) && path.Contains("/files/", StringComparison.Ordinal))
                 {
-                    return Json(Store());
-                }
-
-                if (path.EndsWith("/files/file_1", StringComparison.Ordinal))
-                {
+                    string[] parts = path.Split('/');
+                    string storeId = parts[^3];
+                    string fileId = parts[^1];
                     Polls++;
                     OnPoll?.Invoke();
                     cancellationToken.ThrowIfCancellationRequested();
-                    return Json(VectorFile());
+                    return Json(VectorFile(storeId, fileId));
                 }
 
-                if (path.EndsWith("/vector_stores/vs_1/files", StringComparison.Ordinal))
+                if (path.Contains("/vector_stores/", StringComparison.Ordinal) && path.EndsWith("/files", StringComparison.Ordinal))
                 {
-                    string data = UnexpectedFile ? $"{VectorFile()},{VectorFile("unexpected")}" : VectorFile();
-                    return Json($$"""{"object":"list","data":[{{data}}],"first_id":"file_1","last_id":"file_1","has_more":false}""");
+                    string storeId = path.Split('/')[^2];
+                    var files = _storeFiles[storeId].Select(file => VectorFile(storeId, file)).ToList();
+                    if (UnexpectedFile)
+                    {
+                        files.Add(VectorFile(storeId, "unexpected"));
+                    }
+
+                    return Json($$"""{"object":"list","data":[{{string.Join(",", files)}}],"first_id":"file_1","last_id":"file_1","has_more":false}""");
+                }
+
+                if (path.Contains("/vector_stores/", StringComparison.Ordinal))
+                {
+                    return Json(Store(path.Split('/')[^1]));
                 }
             }
 
             throw new InvalidOperationException($"Unexpected offline request: {request.Method} {path}");
         }
 
-        private string Store() => JsonSerializer.Serialize(new
+        private string Store(string storeId) => JsonSerializer.Serialize(new
         {
-            id = "vs_1",
+            id = storeId,
             @object = "vector_store",
             created_at = 1,
-            name = StoreName,
+            name = _storeNames[storeId],
             status = "completed",
             file_counts = new { in_progress = 0, completed = 1, failed = 0, cancelled = 0, total = 1 }
         });
 
-        private string VectorFile(string id = "file_1") => JsonSerializer.Serialize(new
+        private string VectorFile(string storeId, string id) => JsonSerializer.Serialize(new
         {
             id,
             @object = "vector_store.file",
             created_at = 1,
-            vector_store_id = "vs_1",
+            vector_store_id = storeId,
             status = IndexingStatus,
             last_error = (object?)null
         });

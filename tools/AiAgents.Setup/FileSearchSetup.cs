@@ -68,6 +68,59 @@ public sealed class FileSearchSetup
 
     public async Task<string> ApplyAsync(
         VerifiedProducts products, string statePath, CancellationToken cancellationToken)
+        => await ApplyCoreAsync(products, statePath, null, cancellationToken);
+
+    public async Task<string> ApplyVersionAsync(
+        VerifiedProducts products,
+        VerifiedProducts baselineProducts,
+        string baselineStatePath,
+        string statePath,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(products);
+        ArgumentNullException.ThrowIfNull(baselineProducts);
+        string baselinePath = Path.GetFullPath(baselineStatePath);
+        string targetPath = Path.GetFullPath(statePath);
+        if (string.Equals(baselinePath, targetPath,
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("The baseline and new setup states must be different files.");
+        }
+
+        await using var baselineLock = new FileStream(
+            baselinePath + ".lock", FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose);
+        await using var saved = File.OpenRead(baselinePath);
+        var baseline = await JsonSerializer.DeserializeAsync<SetupState>(
+            saved, ProductManifest.JsonOptions, cancellationToken) ??
+            throw new InvalidDataException("The baseline setup state is empty.");
+        if (baseline.SchemaVersion != 1 || baseline.ProjectEndpoint != _options.ProjectEndpoint!.AbsoluteUri ||
+            baseline.ModelDeployment != _options.ModelDeployment ||
+            baseline.ManifestHash != baselineProducts.ManifestHash ||
+            baseline.PendingOperation is not null || baseline.BaselineAgentVersion is not null ||
+            string.IsNullOrWhiteSpace(baseline.VectorStoreId) || string.IsNullOrWhiteSpace(baseline.AgentVersion) ||
+            baseline.Files is null ||
+            baselineProducts.Files.Count == 0 ||
+            !baseline.Files.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(baselineProducts.Files.Select(file => file.Name)) ||
+            baseline.Files.Values.Any(file => file is null || !file.Attached || string.IsNullOrWhiteSpace(file.FileId)) ||
+            baseline.Files.Values.Select(file => file.FileId).Distinct(StringComparer.Ordinal).Count() != baseline.Files.Count)
+        {
+            throw new InvalidDataException("The baseline state must be a completed setup for the supplied project, model and manifest.");
+        }
+
+        if (products.ManifestHash == baselineProducts.ManifestHash ||
+            products.Files.Count <= baselineProducts.Files.Count ||
+            baselineProducts.Files.Any(oldFile => !products.Files.Any(newFile =>
+                newFile.Name == oldFile.Name && newFile.Content.AsSpan().SequenceEqual(oldFile.Content))))
+        {
+            throw new InvalidDataException("The expanded manifest must retain the exact baseline files and contain changes.");
+        }
+
+        var reference = new BaselineReference(baseline.ManifestHash, baseline.VectorStoreId, baseline.AgentVersion, baseline.Files);
+        return await ApplyCoreAsync(products, targetPath, reference, cancellationToken);
+    }
+
+    private async Task<string> ApplyCoreAsync(
+        VerifiedProducts products, string statePath, BaselineReference? baseline, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(products);
         if (products.Files.Count == 0)
@@ -89,7 +142,12 @@ public sealed class FileSearchSetup
                 throw new InvalidDataException("The setup state is empty.");
             if (state.SchemaVersion != 1 || state.ProjectEndpoint != _options.ProjectEndpoint!.AbsoluteUri ||
                 state.ModelDeployment != _options.ModelDeployment || state.ManifestHash != products.ManifestHash ||
-                state.Files is null || state.Files.Keys.Except(products.Files.Select(file => file.Name)).Any())
+                state.Files is null || state.Files.Keys.Except(products.Files.Select(file => file.Name)).Any() ||
+                state.Files.Values.Any(file => file is null || string.IsNullOrWhiteSpace(file.FileId)) ||
+                state.Files.Values.Select(file => file.FileId).Distinct(StringComparer.Ordinal).Count() != state.Files.Count ||
+                state.BaselineManifestHash != baseline?.ManifestHash ||
+                state.BaselineVectorStoreId != baseline?.VectorStoreId ||
+                state.BaselineAgentVersion != baseline?.AgentVersion)
             {
                 throw new InvalidDataException("Setup state does not match this project/model/manifest. Reconcile it explicitly; do not overwrite it.");
             }
@@ -106,11 +164,34 @@ public sealed class FileSearchSetup
             {
                 ProjectEndpoint = _options.ProjectEndpoint!.AbsoluteUri,
                 ModelDeployment = _options.ModelDeployment,
-                ManifestHash = products.ManifestHash
+                ManifestHash = products.ManifestHash,
+                BaselineManifestHash = baseline?.ManifestHash,
+                BaselineVectorStoreId = baseline?.VectorStoreId,
+                BaselineAgentVersion = baseline?.AgentVersion
             };
         }
 
-        if (state.AgentVersion is null)
+        if (baseline is not null)
+        {
+            var baselineStore = await _stores.GetVectorStoreAsync(baseline.VectorStoreId, cancellationToken);
+            if (baselineStore.Value.Name != StoreName(baseline.ManifestHash))
+            {
+                throw new InvalidDataException("The baseline vector store does not match the baseline manifest.");
+            }
+
+            foreach (var (name, file) in baseline.Files)
+            {
+                await WaitForFileAsync(baseline.VectorStoreId, file.FileId, name, cancellationToken);
+            }
+
+            await VerifyMembershipAsync(baseline.VectorStoreId, baseline.Files.Values, cancellationToken);
+            await VerifyAgentAsync(baseline.AgentVersion, baseline.VectorStoreId, cancellationToken);
+            if (state.AgentVersion is null)
+            {
+                await VerifyLatestAsync(baseline.AgentVersion, cancellationToken);
+            }
+        }
+        else if (state.AgentVersion is null)
         {
             using var existing = await AgentRequestAsync(HttpMethod.Get, $"agents/{AgentName}", null, cancellationToken);
             if (existing.StatusCode != HttpStatusCode.NotFound)
@@ -126,12 +207,17 @@ public sealed class FileSearchSetup
             var result = await _stores.CreateVectorStoreAsync(
                 new VectorStoreCreationOptions { Name = StoreName(products) }, cancellationToken);
             state.VectorStoreId = result.Value.Id;
+            if (string.IsNullOrWhiteSpace(state.VectorStoreId))
+            {
+                throw new InvalidDataException("Vector store creation did not return an identifier.");
+            }
+
             await AfterWriteAsync();
         }
         else
         {
             var result = await _stores.GetVectorStoreAsync(state.VectorStoreId, cancellationToken);
-            if (result.Value.Name != StoreName(products))
+            if (result.Value.Name != StoreName(products.ManifestHash))
             {
                 throw new InvalidDataException("The recorded vector store does not match this manifest.");
             }
@@ -145,6 +231,11 @@ public sealed class FileSearchSetup
                 using var content = new MemoryStream(product.Content, writable: false);
                 var result = await _files.UploadFileAsync(
                     content, product.Name, FileUploadPurpose.Assistants, cancellationToken);
+                if (string.IsNullOrWhiteSpace(result.Value.Id))
+                {
+                    throw new InvalidDataException($"Upload did not return an identifier for {product.Name}.");
+                }
+
                 upload = new UploadedFile(result.Value.Id, false);
                 state.Files.Add(product.Name, upload);
                 await AfterWriteAsync();
@@ -161,38 +252,36 @@ public sealed class FileSearchSetup
             await WaitForFileAsync(state.VectorStoreId, upload.FileId, product.Name, cancellationToken);
         }
 
-        HashSet<string> actualFiles = [];
-        await foreach (var file in _stores.GetVectorStoreFilesAsync(
-            state.VectorStoreId, cancellationToken: cancellationToken))
-        {
-            actualFiles.Add(file.FileId);
-        }
-
-        if (!actualFiles.SetEquals(state.Files.Values.Select(file => file.FileId)))
-        {
-            throw new InvalidDataException("The vector store contains unexpected or missing files. No agent was created or changed.");
-        }
+        await VerifyMembershipAsync(state.VectorStoreId, state.Files.Values, cancellationToken);
 
         if (state.AgentVersion is null)
         {
-            await BeforeWriteAsync("create retrieval agent");
-            using var response = await AgentRequestAsync(HttpMethod.Post, "agents", new
+            if (baseline is not null)
             {
-                name = AgentName,
-                definition = new
-                {
-                    kind = "prompt",
-                    model = _options.ModelDeployment,
-                    instructions = Instructions,
-                    tools = new[] { new { type = "file_search", vector_store_ids = new[] { state.VectorStoreId } } }
-                }
-            }, cancellationToken);
+                await VerifyAgentAsync(baseline.AgentVersion, baseline.VectorStoreId, cancellationToken);
+                await VerifyLatestAsync(baseline.AgentVersion, cancellationToken);
+            }
+
+            var definition = new
+            {
+                kind = "prompt",
+                model = _options.ModelDeployment,
+                instructions = Instructions,
+                tools = new[] { new { type = "file_search", vector_store_ids = new[] { state.VectorStoreId } } }
+            };
+            await BeforeWriteAsync(baseline is null ? "create retrieval agent" : "create retrieval agent version");
+            string path = baseline is null ? "agents" : $"agents/{AgentName}/versions";
+            object body = baseline is null ? new { name = AgentName, definition } : new { definition };
+            using var response = await AgentRequestAsync(HttpMethod.Post, path, body, cancellationToken);
             response.EnsureSuccessStatusCode();
             using var json = await JsonDocument.ParseAsync(
                 await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
-            state.AgentVersion = json.RootElement.GetProperty("versions").GetProperty("latest")
-                .GetProperty("version").GetString();
-            if (string.IsNullOrWhiteSpace(state.AgentVersion))
+            state.AgentVersion = baseline is null
+                ? json.RootElement.GetProperty("versions").GetProperty("latest").GetProperty("version").GetString()
+                : json.RootElement.GetProperty("version").GetString();
+            if (string.IsNullOrWhiteSpace(state.AgentVersion) ||
+                (baseline is not null && (state.AgentVersion == baseline.AgentVersion ||
+                    json.RootElement.GetProperty("name").GetString() != AgentName)))
             {
                 throw new InvalidDataException("Agent creation did not return an explicit version.");
             }
@@ -200,25 +289,7 @@ public sealed class FileSearchSetup
             await AfterWriteAsync();
         }
 
-        using var readback = await AgentRequestAsync(HttpMethod.Get,
-            $"agents/{AgentName}/versions/{Uri.EscapeDataString(state.AgentVersion)}", null, cancellationToken);
-        readback.EnsureSuccessStatusCode();
-        using var agent = await JsonDocument.ParseAsync(
-            await readback.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
-        var definition = agent.RootElement.GetProperty("definition");
-        var tools = definition.GetProperty("tools");
-        if (agent.RootElement.GetProperty("name").GetString() != AgentName ||
-            agent.RootElement.GetProperty("version").GetString() != state.AgentVersion ||
-            definition.GetProperty("kind").GetString() != "prompt" ||
-            definition.GetProperty("model").GetString() != _options.ModelDeployment ||
-            definition.GetProperty("instructions").GetString() != Instructions ||
-            tools.GetArrayLength() != 1 || tools[0].GetProperty("type").GetString() != "file_search" ||
-            tools[0].GetProperty("vector_store_ids").GetArrayLength() != 1 ||
-            tools[0].GetProperty("vector_store_ids")[0].GetString() != state.VectorStoreId)
-        {
-            throw new InvalidDataException("The saved agent readback does not match the approved definition.");
-        }
-
+        await VerifyAgentAsync(state.AgentVersion, state.VectorStoreId, cancellationToken);
         return state.AgentVersion;
 
         async Task BeforeWriteAsync(string operation)
@@ -242,7 +313,60 @@ public sealed class FileSearchSetup
         }
     }
 
-    private static string StoreName(VerifiedProducts products) => $"{AgentName}-{products.ManifestHash[..12]}";
+    private async Task VerifyAgentAsync(string version, string vectorStoreId, CancellationToken cancellationToken)
+    {
+        using var readback = await AgentRequestAsync(HttpMethod.Get,
+            $"agents/{AgentName}/versions/{Uri.EscapeDataString(version)}", null, cancellationToken);
+        readback.EnsureSuccessStatusCode();
+        using var agent = await JsonDocument.ParseAsync(
+            await readback.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
+        var definition = agent.RootElement.GetProperty("definition");
+        var tools = definition.GetProperty("tools");
+        if (agent.RootElement.GetProperty("name").GetString() != AgentName ||
+            agent.RootElement.GetProperty("version").GetString() != version ||
+            definition.GetProperty("kind").GetString() != "prompt" ||
+            definition.GetProperty("model").GetString() != _options.ModelDeployment ||
+            definition.GetProperty("instructions").GetString() != Instructions ||
+            tools.GetArrayLength() != 1 || tools[0].GetProperty("type").GetString() != "file_search" ||
+            tools[0].GetProperty("vector_store_ids").GetArrayLength() != 1 ||
+            tools[0].GetProperty("vector_store_ids")[0].GetString() != vectorStoreId)
+        {
+            throw new InvalidDataException("The saved agent readback does not match the approved definition.");
+        }
+
+    }
+
+    private async Task VerifyLatestAsync(string expectedVersion, CancellationToken cancellationToken)
+    {
+        using var response = await AgentRequestAsync(HttpMethod.Get, $"agents/{AgentName}", null, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        using var json = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
+        if (json.RootElement.GetProperty("versions").GetProperty("latest").GetProperty("version").GetString() != expectedVersion)
+        {
+            throw new InvalidDataException("The agent's latest version changed; review other clients before creating a version.");
+        }
+    }
+
+    private static string StoreName(VerifiedProducts products) => StoreName(products.ManifestHash);
+
+    private static string StoreName(string manifestHash) => $"{AgentName}-{manifestHash[..12]}";
+
+    private async Task VerifyMembershipAsync(
+        string vectorStoreId, IEnumerable<UploadedFile> expectedFiles, CancellationToken cancellationToken)
+    {
+        HashSet<string> actualFiles = [];
+        await foreach (var file in _stores.GetVectorStoreFilesAsync(
+            vectorStoreId, cancellationToken: cancellationToken))
+        {
+            actualFiles.Add(file.FileId);
+        }
+
+        if (!actualFiles.SetEquals(expectedFiles.Select(file => file.FileId)))
+        {
+            throw new InvalidDataException("The vector store contains unexpected or missing files. No agent was created or changed.");
+        }
+    }
 
     private async Task WaitForFileAsync(string storeId, string fileId, string name, CancellationToken cancellationToken)
     {
@@ -296,9 +420,14 @@ public sealed class FileSearchSetup
         public string? VectorStoreId { get; set; }
         public string? PendingOperation { get; set; }
         public string? AgentVersion { get; set; }
+        public string? BaselineManifestHash { get; init; }
+        public string? BaselineVectorStoreId { get; init; }
+        public string? BaselineAgentVersion { get; init; }
         public Dictionary<string, UploadedFile> Files { get; init; } = [];
     }
 
+    private sealed record BaselineReference(
+        string ManifestHash, string VectorStoreId, string AgentVersion, IReadOnlyDictionary<string, UploadedFile> Files);
     private sealed record UploadedFile(string FileId, bool Attached);
 }
 #pragma warning restore OPENAI001

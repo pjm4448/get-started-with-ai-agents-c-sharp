@@ -20,6 +20,9 @@ path rejection, successful readiness, repeated setup without writes, failed
 indexing, bounded timeout, caller cancellation and checkpoint retention.
 An uncertain upload blocks a second attempt rather than duplicating a write;
 unexpected remote membership and untracked agents cannot be adopted.
+Versioning tests also cover baseline preservation, repeated runs, changed
+baseline files, latest-version checks and uncertain version-write recovery.
+The expanded-version command has not been exercised against the live service.
 
 Citation tests preserve file IDs across provider mapping and chat/history
 state, remove repeated annotations, and render labels as encoded text without

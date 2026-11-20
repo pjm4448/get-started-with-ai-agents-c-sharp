@@ -6,9 +6,11 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 
-if (args is not (["validate", _] or ["apply", _, _, "--approve-upload"]))
+if (args is not (["validate", _] or ["apply", _, _, "--approve-upload"] or
+    ["apply-version", _, _, _, _, "--approve-upload", "--approve-agent-version"]))
 {
-    Console.Error.WriteLine("Usage: validate <manifest.json> | apply <manifest.json> <local-state.json> --approve-upload");
+    Console.Error.WriteLine("Usage: validate <manifest.json> | apply <manifest.json> <local-state.json> --approve-upload | " +
+        "apply-version <expanded-manifest.json> <baseline-manifest.json> <baseline-state.json> <new-state.json> --approve-upload --approve-agent-version");
     return 2;
 }
 
@@ -53,7 +55,16 @@ try
         Timeout = TimeSpan.FromSeconds(45)
     };
     var setup = new FileSearchSetup(options, credential, http);
-    string version = await setup.ApplyAsync(products, args[2], cancellation.Token);
+    string version;
+    if (args[0] == "apply-version")
+    {
+        var baselineProducts = await ProductManifest.LoadAsync(args[2], cancellation.Token);
+        version = await setup.ApplyVersionAsync(products, baselineProducts, args[3], args[4], cancellation.Token);
+    }
+    else
+    {
+        version = await setup.ApplyAsync(products, args[2], cancellation.Token);
+    }
     log.LogInformation("Verified retrieval agent {AgentName}, version {Version}. Web configuration was not changed.",
         FileSearchSetup.AgentName, version);
     return 0;
