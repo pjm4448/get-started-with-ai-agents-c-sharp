@@ -31,11 +31,13 @@ in through .NET user-secrets; other environments remain disabled by default.
 The verified developer credential is privileged, not a least-privilege
 production runtime identity.
 
-The next retrieval milestone now has an offline-tested
+The retrieval milestone now has an offline-tested
 [File Search setup command](docs/retrieval.md) and two reviewed, hash-pinned
-product samples. It preserves the working text-only agent and requires
-explicit approval before uploads or a local agent switch. Live retrieval has
-not yet been verified. Citation file identities are preserved in typed
+product samples. With explicit approval, these were ingested and a separate
+pinned retrieval agent was verified and selected on this workstation. The
+working text-only agent remains available for rollback. Live grounded chat has
+been verified with the two samples; one answer exposed a raw citation marker
+alongside the correct source label. Citation file identities are preserved in typed
 stream/history state; the UI still shows encoded source labels, not file links.
 
 The stable Foundry package still exposes experimental Responses APIs. Their
@@ -100,7 +102,8 @@ dotnet run --project src\AiAgents.Web --configuration Release --launch-profile h
 Open `https://localhost:7124`. Use the HTTPS profile to match the registered
 sign-in redirect URI. The development HTTPS certificate must be trusted;
 do not bypass certificate validation. On the configured workstation,
-successful sign-in now opens working text-only chat using local user-secrets.
+successful sign-in opens the locally configured chat using user-secrets. This
+workstation now selects the retrieval agent; start a new conversation to use it.
 With committed configuration alone, sign-in still displays the disabled chat
 shell until the Foundry settings below are supplied.
 

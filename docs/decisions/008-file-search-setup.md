@@ -87,6 +87,16 @@ the selected service's retention/residency before upload.
 - Implement optional Azure AI Search and isolated runtime-permission testing.
 - Revisit experimental APIs at dependency upgrades.
 
+## Live development evidence
+
+The approved two-file setup succeeded in the existing development project and
+a repeat run verified the same resources and pinned agent version. Five
+approved synthetic requests in the local signed-in UI verified grounding,
+source labels, follow-up, refresh, cancellation and recovery. One answer
+included a raw citation marker in its text despite displaying the correct
+source label. Further citation-presentation work remains; this check does not
+establish least-privilege runtime access or production readiness.
+
 ## References
 
 - [Official File Search guide](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/file-search)

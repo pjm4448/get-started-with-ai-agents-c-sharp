@@ -1,8 +1,14 @@
 # Local document-grounded chat
 
-Status: **offline implementation verified; live File Search setup is not yet
-approved or verified**. Ordinary text-only local chat still uses its existing
-agent. Building or starting the application never uploads sample documents.
+Status: **live grounded chat verified with the initial corpus**. The two
+reviewed files were ingested into a vector store and the separate
+`aiagents-products` version `1` agent was verified on the configured
+workstation. A repeat setup verified existing resources. The workstation now
+opts in to this agent; the original text-only agent remains available for
+rollback. Building or starting the application never uploads sample documents.
+One live answer included an unformatted provider citation marker in its text;
+the separately displayed source label was correct. Presentation of that marker
+remains an open limitation.
 
 ## Initial corpus and prerequisites
 
@@ -46,6 +52,17 @@ indexing, and creates a separate ordinary prompt agent named
 `aiagents-products`. File Search may incur storage/indexing and inference
 usage. Confirm the selected setup's retention and data residency; acceptance
 of GlobalStandard inference alone is not a data-storage residency guarantee.
+
+Microsoft's [vector store guidance](https://learn.microsoft.com/azure/foundry/agents/concepts/vector-stores)
+states that Basic setup uses Microsoft-managed storage and search resources.
+Its documented seven-day default applies to stores created by conversation
+helpers; do not assume it applies to this separately created agent store.
+The [Agent Service privacy guidance](https://learn.microsoft.com/azure/foundry/responsible-ai/agents/data-privacy-security)
+and [Models sold by Azure privacy guidance](https://learn.microsoft.com/azure/foundry/responsible-ai/openai/data-privacy)
+describe stored data at rest in the resource's geography, while Global model
+inference can occur in other geographies. They do not establish a specific
+storage region or retention period for this exact Basic setup; verify those
+requirements before uploading.
 
 The guide supports Basic and Standard setups, but Standard storage/Search role
 requirements must not be copied blindly to this Basic project. The exact
@@ -136,6 +153,15 @@ document-specific warranty/return facts and matching source labels, follow-up
 context, a missing fact without a fabricated answer/source, and source
 restoration after refresh. Recheck cancellation/recovery if retrieval changes
 that behavior.
+
+On 2026-11-21, five approved synthetic requests in the signed-in local UI
+verified the glasses' two-year electronics warranty and 30-day return period,
+the blanket's three-year warranty and 45-day guarantee, source labels,
+follow-up context, an absent serial number, history after refresh, cancellation
+with partial output and recovery in a new chat. Four responses completed; one
+was canceled. One comparison answer displayed a raw citation marker alongside
+the correct source label. This observation does not establish that all
+citations or provider-generated markers are rendered cleanly.
 
 Mocked tests establish mapping, ingestion and UI behavior, not actual grounding,
 quality, least privilege or multi-user document authorization.

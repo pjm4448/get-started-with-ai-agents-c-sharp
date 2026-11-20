@@ -31,7 +31,10 @@ not proof that every file's behavior was fully inspected.
 Authenticated text-only local chat has now been verified with the real
 Foundry agent and independently confirmed by the user. Source-default File
 Search has an offline-tested .NET setup console and typed citation identity
-preservation, but no uploaded corpus or live retrieval is yet claimed.
+preservation. The two reviewed files were ingested and a separate pinned
+retrieval agent was verified in the existing development project; live
+document-grounded responses and source restoration were verified in the local
+browser. One response exposed a raw citation marker alongside its source label.
 The [initial corpus](../../samples/products/README.md) contains only the two
 fully reviewed Markdown documents with their original MIT notice and exact
 hashes. The other seven Markdown/eleven PDF documents await detailed review.
@@ -39,9 +42,9 @@ See [ADR 008](../decisions/008-file-search-setup.md).
 
 | Source capability | Implemented target | Remaining verification |
 | --- | --- | --- |
-| Privileged file/vector-store and agent setup | `tools/AiAgents.Setup`; installed Azure.AI.Extensions.OpenAI clients and documented agent REST v1 | Separate upload approval, actual Basic setup/model/network support and pinned agent readback |
-| File citations and history | Application-owned file IDs and labels; deduplicated stream/history UI state | Real document-grounded answer facts and source restoration |
-| Initial sample facts | Source files 1 and 2, unchanged and hash-pinned, with included MIT notice | Fresh bounded inference approval and actual cited answers |
+| Privileged file/vector-store and agent setup | `tools/AiAgents.Setup`; installed Azure.AI.Extensions.OpenAI clients and documented agent REST v1 | Approved setup, ingestion, pinned agent readback and repeat run succeeded; least-privilege access remains unverified |
+| File citations and history | Application-owned file IDs and labels; deduplicated stream/history UI state | Live source restoration verified; raw citation marker presentation remains a gap |
+| Initial sample facts | Source files 1 and 2, unchanged and hash-pinned, with included MIT notice | Live cited warranty and return facts verified; broader corpus remains unreviewed |
 | Remaining source sample corpus | Inventory, PDF text extraction and initial notice/metadata scan only | Detailed review before reuse; source data contains inconsistencies |
 
 This does not close the denied source-script inspection, optional Azure AI

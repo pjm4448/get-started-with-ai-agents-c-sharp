@@ -30,8 +30,13 @@ cover streaming, tool progress, history, cancellation and ownership.
 The retrieval implementation passed 52 focused unit tests, 21 component
 tests and five offline browser tests. Release solution build completed with
 zero warnings/errors; locked restore, formatting, dependency vulnerability
-reporting for the setup project and the zero-Python checks passed. Live
-retrieval remains a separate unverified gate.
+reporting for the setup project and the zero-Python checks passed. The
+user-approved live setup ingested both files, verified the pinned
+`aiagents-products` agent and successfully repeated setup using the same state.
+Five approved synthetic browser requests verified cited sample facts, follow-up,
+missing-information handling, refresh, cancellation and recovery. One answer
+showed a raw citation marker alongside its source label; rendering that marker
+remains a limitation. Live success does not establish least privilege.
 
 From the repository root, validate the initial two-file corpus without Azure:
 
