@@ -1,16 +1,19 @@
 # Additional product-document review
 
 The original source repository contains seven further Markdown documents and
-eleven PDFs beyond the two in the current sample corpus. All 18 are **deferred**:
-there is no decision to redistribute or upload them. The source repository
+eleven PDFs beyond the two in the current sample corpus. The user selected all
+18 for further consideration and prefers the original files. No independent
+rights evidence was provided, and none is approved for redistribution or
+upload. They remain **deferred** pending resolution. The source repository
 has an MIT license, but the provenance and redistribution rights of individual
 assets have not been independently established. The product, warranty, contact
 and safety claims are not verified and must not be used as consumer guidance.
 
 Source Git history records the additional Markdown files in commit `d28bde8`.
 Commit `c1d210f` later added the numbered PDFs while removing same-numbered
-Markdown files. This establishes repository history, not authorship or
-independent rights clearance for the underlying material.
+Markdown files. The [source pull request](https://github.com/Azure-Samples/get-started-with-ai-agents/pull/208)
+describes converting some Markdown files to PDF, but does not establish
+authorship or independent rights clearance for the underlying material.
 
 The Markdown text was reviewed directly. PDF review used extracted text from
 every page and inspected metadata, page images and attachments exposed by the
