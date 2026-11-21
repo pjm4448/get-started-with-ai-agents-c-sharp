@@ -2,3 +2,4 @@
 samples/products/product_info_*.md -text
 # Keep fictional sample bytes stable for manifest verification.
 samples/fictional/demo-*.md -text
+samples/fictional-search/*.pdf -text

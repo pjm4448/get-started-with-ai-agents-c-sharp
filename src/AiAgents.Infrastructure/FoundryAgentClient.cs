@@ -126,7 +126,7 @@ public sealed class FoundryAgentClient : IAgentClient, IConversationStore
                     yield return new Citation(file.Filename, null, file.FileId);
                     break;
                 case UriCitationMessageAnnotation url:
-                    yield return new Citation(url.Title, url.Uri.Scheme is "https" or "http" ? url.Uri : null);
+                    yield return new Citation(url.Title, url.Uri.Scheme is "https" or "http" ? url.Uri : null, IsUriCitation: true);
                     break;
             }
         }

@@ -30,7 +30,8 @@ public sealed class ConversationTranscriptTests
         string html = await RenderTranscriptAsync(messages, ConversationStatus.Responding);
 
         Assert.Contains("&lt;script&gt;alert(1)&lt;/script&gt;", html);
-        Assert.Contains("&lt;img src=x onerror=alert(1)&gt;", html);
+        Assert.Contains(">Source</li>", html);
+        Assert.DoesNotContain("onerror", html);
         Assert.Contains("Partial\nresponse", System.Net.WebUtility.HtmlDecode(html));
         Assert.DoesNotContain("<script>", html);
         Assert.DoesNotContain("<img", html);
@@ -38,6 +39,22 @@ public sealed class ConversationTranscriptTests
         Assert.DoesNotContain("token=hidden", html);
         Assert.Contains("Assistant is responding.", html);
         Assert.Contains("aria-live=\"polite\"", html);
+    }
+
+    [Fact]
+    public async Task HidesUriCitationLabelsWhenTheirSourceWasRejected()
+    {
+        ChatMessage[] messages =
+        [
+            new(ChatMessageRole.Assistant, "Answer",
+                [new("https://private.example/file.pdf?sig=sensitive", null, IsUriCitation: true)])
+        ];
+
+        string html = await RenderTranscriptAsync(messages, ConversationStatus.Completed);
+
+        Assert.Contains(">Source</li>", html);
+        Assert.DoesNotContain("private.example", html);
+        Assert.DoesNotContain("sensitive", html);
     }
 
     [Theory]

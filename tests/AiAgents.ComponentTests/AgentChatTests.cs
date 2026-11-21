@@ -38,6 +38,46 @@ public sealed class AgentChatTests
     }
 
     [Fact]
+    public async Task RestoresSearchCitationWithoutRenderingItsPrivateSourceUrl()
+    {
+        await using var test = new ChatTest();
+        test.SaveExisting(test.Owner.Current.Marker);
+        test.Backend.History =
+            [new ConversationHistoryMessage("answer", ConversationMessageRole.Assistant, "Answer",
+                [new Citation("fictional.pdf", new Uri("https://storage.example/fictional.pdf?sig=sensitive"), IsUriCitation: true)])];
+
+        var cut = test.Context.Render<AgentChat>();
+
+        cut.WaitForAssertion(() => Assert.True(test.Workspace.IsInitialized));
+        Assert.Equal("fictional.pdf", cut.Find(".citations li").TextContent);
+        Assert.Empty(cut.FindAll(".citations a"));
+        Assert.DoesNotContain("storage.example", cut.Markup);
+        Assert.DoesNotContain("sensitive", cut.Markup);
+        Assert.Equal(0, test.Backend.SendCalls);
+    }
+
+    [Theory]
+    [InlineData("https://storage.example/private.pdf?sig=sensitive")]
+    [InlineData("private.pdf?sig=sensitive")]
+    [InlineData("storage.example")]
+    public async Task HidesUnsafeSearchCitationLabels(string label)
+    {
+        await using var test = new ChatTest();
+        test.SaveExisting(test.Owner.Current.Marker);
+        test.Backend.History =
+            [new ConversationHistoryMessage("answer", ConversationMessageRole.Assistant, "Answer",
+                [new Citation(label, new Uri("https://storage.example/private.pdf?sig=sensitive"), IsUriCitation: true)])];
+
+        var cut = test.Context.Render<AgentChat>();
+        cut.WaitForAssertion(() => Assert.True(test.Workspace.IsInitialized));
+
+        Assert.Equal("Source", cut.Find(".citations li").TextContent);
+        Assert.Empty(cut.FindAll(".citations a"));
+        Assert.DoesNotContain("storage.example", cut.Markup);
+        Assert.DoesNotContain("sensitive", cut.Markup);
+    }
+
+    [Fact]
     public async Task CreatesOwnedChatStreamsProgressAndPreventsDuplicateSubmission()
     {
         await using var test = new ChatTest();

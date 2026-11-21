@@ -9,7 +9,7 @@ The transcript supports streamed plain text, tool progress and citation labels;
 typed file identities survive stream/history mapping without becoming public
 links. Markdown, themes and other source UI parity remain open. Live File Search
 was verified with two source documents. A separate fictional corpus is now
-indexed; its live chat and citations await manual verification.
+indexed; the user reports that its manual chat went fine.
 
 Verification shorthand: **UI** means rendering, responsive behavior, keyboard,
 focus and accessibility; **chat** means history, streaming, errors and

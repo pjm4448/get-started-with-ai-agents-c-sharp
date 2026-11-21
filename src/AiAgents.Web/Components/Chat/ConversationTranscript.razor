@@ -23,7 +23,7 @@
                             <ul>
                                 @foreach (var citation in message.Citations)
                                 {
-                                    <li>@citation.Label</li>
+                                    <li>@GetCitationLabel(citation)</li>
                                 }
                             </ul>
                         </div>
@@ -58,4 +58,24 @@
         ChatMessageRole.Assistant => "Assistant",
         _ => throw new InvalidOperationException("Unknown chat message role.")
     };
+
+    private static string GetCitationLabel(AiAgents.Application.Citation citation)
+    {
+        if (!citation.IsUriCitation && citation.Source is null)
+        {
+            return citation.Label;
+        }
+
+        string label = citation.Label;
+        if (citation.Source is not { IsAbsoluteUri: true } source ||
+            label.Length is < 1 or > 128 ||
+            !label.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '-' or '_') ||
+            !(label.EndsWith(".md", StringComparison.OrdinalIgnoreCase) || label.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)) ||
+            !string.Equals(label, Uri.UnescapeDataString(source.Segments[^1]), StringComparison.Ordinal))
+        {
+            return "Source";
+        }
+
+        return label;
+    }
 }

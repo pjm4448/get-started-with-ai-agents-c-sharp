@@ -43,7 +43,7 @@ public sealed class FoundryAgentClientTests
             item => Assert.Equal(new TextDelta("Hello"), item),
             item => Assert.Equal(new CompletedText("Hello"), item),
             item => Assert.Equal(new Citation("guide.pdf", null, "file_1"), item),
-            item => Assert.Equal(new Citation("Guide", new Uri("https://example.com/guide")), item),
+            item => Assert.Equal(new Citation("Guide", new Uri("https://example.com/guide"), IsUriCitation: true), item),
             item => Assert.Equal(new UsageInformation(12, 7), item),
             item => Assert.IsType<AgentCompleted>(item));
         Assert.Equal(1, handler.RequestCount);
@@ -85,7 +85,7 @@ public sealed class FoundryAgentClientTests
         var events = await CollectAsync(new FoundryAgentClient(Options, new TestCredential(), http));
 
         Assert.Equal(new CompletedText("First second"), events[1]);
-        Assert.Equal(new Citation("Untrusted", null), events[2]);
+        Assert.Equal(new Citation("Untrusted", null, IsUriCitation: true), events[2]);
     }
 
     [Theory]

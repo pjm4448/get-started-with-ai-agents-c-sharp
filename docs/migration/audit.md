@@ -36,20 +36,46 @@ retrieval agent was verified in the existing development project; live
 document-grounded responses and source restoration were verified in the local
 browser. A raw citation marker observed in one response is now handled by an
 offline-tested display fix; other marker formats remain unverified.
-The [initial corpus](../../samples/products/README.md) contains only the two
-fully reviewed Markdown documents with their original MIT notice and exact
-hashes. The other seven Markdown/eleven PDF documents await detailed review.
+The [initial corpus](../../samples/products/README.md) contains two
+source Markdown documents and exact hashes; the original notice is absent,
+so those documents must not be redistributed or reuploaded without it. The
+other source documents were reviewed but are not approved for reuse. A
+separate corpus of 20 fictional records was indexed, and the user reports
+that manual chat with version `2` went fine.
 See [ADR 008](../decisions/008-file-search-setup.md).
 
 | Source capability | Implemented target | Remaining verification |
 | --- | --- | --- |
 | Privileged file/vector-store and agent setup | `tools/AiAgents.Setup`; installed Azure.AI.Extensions.OpenAI clients and documented agent REST v1 | Approved setup, ingestion, pinned agent readback and repeat run succeeded; least-privilege access remains unverified |
 | File citations and history | Application-owned file IDs and labels; deduplicated stream/history UI state | Live source restoration verified; observed marker display fixed offline, other formats unverified |
-| Initial sample facts | Source files 1 and 2, unchanged and hash-pinned, with included MIT notice | Live cited warranty and return facts verified; broader corpus remains unreviewed |
-| Remaining source sample corpus | Inventory, PDF text extraction and initial notice/metadata scan only | Detailed review before reuse; source data contains inconsistencies |
+| Initial sample facts | Source files 1 and 2, unchanged and hash-pinned; original notice currently absent | Live cited warranty and return facts verified; do not redistribute or reupload without the notice |
+| Remaining source sample corpus | Reviewed; separately authored fictional replacement indexed | Original rights remain unresolved; user reports fictional chat went fine without individual test details |
 
 This does not close the denied source-script inspection, optional Azure AI
 Search, evaluations, production identity or broader source-parity gates.
+
+### Optional Search design checkpoint
+
+The source creates a Blob data source, a vector and semantic index, a
+chunking and embedding skillset, and separate Markdown and default-format
+indexers. Its agent requests `simple` queries. The proposed .NET path keeps
+these ingestion demonstrations but deliberately uses `vector_simple_hybrid`
+queries, as selected by the user. The existing adapter maps Search tool events
+and URI citations; this does not establish a working Search deployment.
+
+The existing 20 fictional Markdown files and a separately authored
+[fictional PDF](../../samples/fictional-search/README.md) are intended for
+the new index. The PDF manifest is validated offline; neither the PDF nor a
+Search index has been uploaded or created. The original source documents
+are not part of this proposal.
+
+The East US Search Basic retail rate checked on 2026-11-21 is USD 0.101 per
+hour, or USD 73.73 for 730 hours, excluding other services and usage. The
+user set an estimated incremental ceiling of USD 100 per month. Network
+design, full cost estimate and actual capacity remain open; the quota API
+reported that `Microsoft.Quota` is not registered. No registration or
+network change was made. A Search shared private link to the restricted
+Foundry model endpoint is a candidate, not an approved or verified route.
 
 ## Observed behavior and parity requirements
 

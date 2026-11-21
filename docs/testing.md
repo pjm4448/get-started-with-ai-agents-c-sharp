@@ -28,11 +28,15 @@ baseline protection, state binding, cancellation, failed ingestion, latest
 changes and uncertain version writes. Offline success does not establish
 live replacement behavior or PDF ingestion.
 
+An independently authored [fictional PDF sample](../samples/fictional-search/README.md)
+has a separate hash manifest. Its manifest validates offline, but it has not
+been uploaded or indexed.
+
 The approved live replacement indexed 20 fictional files and verified the
 version `2` definition and membership. A repeated setup preserved both state
 files; the local host is pinned to version `2` and its health checks passed.
-No version `2` model request has been sent; manual grounding and citation
-verification remain pending.
+The user reports that manual version `2` chat went fine. Specific prompts,
+citations and other individual checks were not reported.
 
 Citation tests preserve file IDs across provider mapping and chat/history
 state, remove repeated annotations, and render labels as encoded text without

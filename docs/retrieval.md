@@ -1,6 +1,6 @@
 # Local document-grounded chat
 
-Status: **fictional replacement installed; manual chat verification pending**.
+Status: **fictional replacement installed; manual chat reported successful**.
 The initial two-file corpus was verified with `aiagents-products` version `1`.
 The 20 fictional records have since been indexed in a separate store and
 version `2` was read back and selected on this workstation. Repeat setup
@@ -23,8 +23,11 @@ decisions and rights/provenance checks. These are sample
 claims, not verified product, contact or safety guidance.
 
 A separate [fictional sample corpus](../samples/fictional/README.md) is
-indexed by the current local agent version. Its chat answers and citations
-have not yet been verified manually.
+indexed by the current local agent version. The user reports that manual
+chat went fine; individual prompts and citation checks were not reported.
+An additional [fictional PDF](../samples/fictional-search/README.md) is
+prepared for the planned Azure AI Search mode, but has not been uploaded or
+indexed.
 
 Use the configured workstation's .NET 10 SDK and developer Azure credentials
 for the same tenant/project as local chat. Web sign-in does not authenticate
@@ -52,6 +55,57 @@ credential. Changed documents fail rather than uploading an unreviewed version.
 Do not update a hash merely to silence a mismatch.
 CI runs the same offline validator. Git attributes preserve sample-file bytes
 across checkouts, and manifest JSON whitespace does not invalidate local state.
+
+For the planned Search mode, the setup tool can also preview an index definition
+without contacting Azure. This example uses a fictitious endpoint:
+
+```powershell
+dotnet run --project .\tools\AiAgents.Setup -- preview-search-index fictional-index https://example.openai.azure.com embedding text-embedding-3-small 1536
+dotnet run --project .\tools\AiAgents.Setup -- preview-search-skillset fictional-index https://example.openai.azure.com embedding text-embedding-3-small 1536
+dotnet run --project .\tools\AiAgents.Setup -- preview-search-indexer fictional-index markdown
+dotnet run --project .\tools\AiAgents.Setup -- preview-search-indexer fictional-index pdf
+dotnet run --project .\tools\AiAgents.Setup -- preview-search-datasource fictional-index markdown /subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/example/providers/Microsoft.Storage/storageAccounts/exampleaccount fictional-corpus
+dotnet run --project .\tools\AiAgents.Setup -- preview-search-datasource fictional-index pdf /subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/example/providers/Microsoft.Storage/storageAccounts/exampleaccount fictional-corpus
+```
+
+The generated definition includes a keyword-searchable chunk, a hidden vector,
+a vectorizer and a filterable parent identifier. It uses the Search service's
+system-assigned identity for the vectorizer, not an API key. Model and dimension
+choices must also match the eventual embedding skill. This preview accepts
+only the models' default dimensions because the query vectorizer definition
+has no dimensions setting. The skillset preview splits extracted content,
+generates matching embeddings and projects chunks with their source metadata.
+These previews print their
+resource endpoint; avoid sharing output containing a real environment's
+configuration. Data-source previews print the Storage resource ID, not an
+account key, and select separate `markdown/` and `pdf/` virtual folders.
+They do not create resources, validate model availability or prove network
+access. The indexer previews are disabled, use private execution and allow no
+failed items. Their parser
+and projection compatibility, Markdown parsing and PDF extraction remain
+unverified; live setup is not implemented yet.
+
+The setup project also contains a guarded Blob-upload foundation, exercised
+offline but not exposed as a command. It snapshots both validated manifests,
+requires a private dedicated container, rejects untracked or missing Blobs,
+uses conditional creation, and verifies bytes against the returned ETag.
+Separate local state records pending writes before sending them. An uncertain
+write or interrupted readback blocks subsequent attempts until manually
+reconciled; no automatic deletion or retry is performed. The complete Search
+setup, indexing, agent creation and live upload are not yet available.
+An offline-tested readback helper checks both indexer results against captured
+pre-run execution timestamps, rejects warnings and failures, and checks indexed
+chunk IDs, source membership and selected expected text for every file. It deliberately
+rejects 1,000 or more chunks and count mismatches rather than accepting a
+possibly truncated result set. It must be integrated with a checkpointed run
+workflow; these checks have not yet been exercised against a live index.
+
+For URI citations, the transcript does not render the URI. It displays the
+provider label only when it is a simple Markdown or PDF filename matching
+the URI's final path segment; otherwise it displays `Source`. This reduces
+accidental exposure of URL and query-string labels, but does not establish
+that a provider-supplied filename is non-sensitive. File Search citations
+continue to display their encoded file labels.
 
 ## Explicit upload and setup boundary
 
@@ -219,8 +273,8 @@ On 2026-11-21, replacement setup ingested all 20 fictional files, verified
 exact store membership and the pinned version `2` definition, and completed
 a repeat run without changing either local state file. Readback confirmed
 `latest` is `2` and version `1` still exists. Local chat was pinned to `2`;
-health and liveness returned 200. No model request was sent for version `2`,
-so its grounding, citations and manual chat experience are not yet verified.
+health and liveness returned 200. The user subsequently reported that manual
+chat went fine; the individual prompts and citation checks were not reported.
 
 On 2026-11-21, five approved synthetic requests in the signed-in local UI
 verified the glasses' two-year electronics warranty and 30-day return period,

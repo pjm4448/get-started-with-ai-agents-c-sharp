@@ -46,6 +46,44 @@ public sealed class FileSearchSetupTests : IDisposable
         await Assert.ThrowsAsync<InvalidDataException>(() => ProductManifest.LoadAsync(manifest, default));
     }
 
+    [Fact]
+    public async Task SearchCorpusBindsBothManifestsAndRejectsChangedFiles()
+    {
+        Directory.CreateDirectory(_directory);
+        string markdownPath = await WriteManifestAsync("guide.md", "Fictional markdown.");
+        string pdfPath = await WriteManifestAsync("guide.pdf", "Fictional PDF bytes.");
+
+        var corpus = await SearchCorpus.LoadAsync(markdownPath, pdfPath, default);
+        Assert.Equal(["guide.md", "guide.pdf"], corpus.Files.Select(file => file.Name));
+        Assert.Equal(corpus.ManifestHash, (await SearchCorpus.LoadAsync(markdownPath, pdfPath, default)).ManifestHash);
+        await File.WriteAllTextAsync(Path.Combine(_directory, "guide.pdf"), "Changed PDF bytes.");
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => SearchCorpus.LoadAsync(markdownPath, pdfPath, default));
+    }
+
+    [Fact]
+    public async Task SearchCorpusRejectsManifestsWithTheWrongFileTypes()
+    {
+        Directory.CreateDirectory(_directory);
+        string markdownPath = await WriteManifestAsync("guide.md", "Fictional markdown.");
+        string pdfPath = await WriteManifestAsync("guide.pdf", "Fictional PDF bytes.");
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => SearchCorpus.LoadAsync(pdfPath, markdownPath, default));
+    }
+
+    private async Task<string> WriteManifestAsync(string name, string text)
+    {
+        byte[] content = Encoding.UTF8.GetBytes(text);
+        await File.WriteAllBytesAsync(Path.Combine(_directory, name), content);
+        string manifest = Path.Combine(_directory, $"{name}.json");
+        await File.WriteAllTextAsync(manifest, JsonSerializer.Serialize(new
+        {
+            schemaVersion = 1,
+            files = new[] { new { name, sha256 = Convert.ToHexString(SHA256.HashData(content)) } }
+        }));
+        return manifest;
+    }
+
     [Theory]
     [InlineData("../private.md")]
     [InlineData("folder\\private.md")]

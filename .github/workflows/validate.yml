@@ -24,6 +24,9 @@ jobs:
       - name: Validate approved product samples without Azure
         shell: pwsh
         run: dotnet run --project (Join-Path tools AiAgents.Setup) --configuration Release --no-build --no-restore -- validate (Join-Path samples products manifest.json)
+      - name: Validate fictional retrieval samples without Azure
+        shell: pwsh
+        run: dotnet run --project (Join-Path tools AiAgents.Setup) --configuration Release --no-build --no-restore -- validate-search (Join-Path samples fictional manifest.json) (Join-Path samples fictional-search manifest.json)
       - name: Install Chromium for offline browser tests
         shell: pwsh
         env:

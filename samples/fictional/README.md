@@ -20,7 +20,8 @@ approval.
 
 The replacement setup has indexed these files in a separate store and the
 local app is pinned to `aiagents-products` version `2`. The old version and
-store remain available. No version `2` chat request has been tested yet.
+store remain available. The user reports that manual version `2` chat went
+fine; specific prompts and citation checks were not reported.
 `replace-version` checks the original baseline without reuploading it. See
 [retrieval setup](../../docs/retrieval.md) for retention, versioning and
 rollback details. The sample set is Markdown only; it does not demonstrate PDF

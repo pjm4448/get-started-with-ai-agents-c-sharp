@@ -129,7 +129,7 @@ public sealed class FoundryConversationStoreTests
                 Assert.Equal("msg_answer", item.Id);
                 Assert.Equal(ConversationMessageRole.Assistant, item.Role);
                 Assert.Equal("Stored answer", item.Text);
-                Assert.Equal([new Citation("guide.pdf", null, "file_1"), new Citation("Unsafe", null)], item.Citations);
+                Assert.Equal([new Citation("guide.pdf", null, "file_1"), new Citation("Unsafe", null, IsUriCitation: true)], item.Citations);
             });
         Assert.Equal(2, handler.Requests.Count);
         Assert.All(handler.Requests, uri =>

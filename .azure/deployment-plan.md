@@ -2,6 +2,88 @@
 
 Status: Local chat verified - development only
 
+## Search retrieval milestone
+
+The user approved a separate Azure AI Search and Blob retrieval milestone in
+the existing East US development environment. The intended agent uses
+`vector_simple_hybrid`, with separate Markdown and fictional PDF ingestion,
+an embedding model, a private Blob container and keyless identities. The
+working File Search agent and its state must remain available for rollback.
+The user no longer wants a pricing review or budget ceiling for this
+educational demo. User-led chat verification is preferred; no automated
+inference is authorized. Network changes must be proposed for separate review.
+
+Azure CLI quota queries returned `MissingRegistrationForResourceProvider`
+for `Microsoft.Quota`; registration was not changed. Actual capacity and the
+outbound networking path remain unverified. Do not provision until the
+required network and identity configuration is validated.
+
+For a simpler educational deployment, a public-endpoint alternative is to
+set the existing Foundry account's network default action to Allow, and use
+public endpoints for the new Search and Storage services. This removes the
+existing Foundry IP restriction; it does not make the resources anonymously
+accessible. Keep local authentication disabled and require Microsoft Entra
+authentication and scoped RBAC, with a private Blob container and public Blob
+access disabled. Confirm the settings on each resource before use. This
+alternative avoids the proposed shared private link and explicitly pinned
+private indexer execution, but its complete end-to-end route is not yet
+verified. It requires the user's network review before any change.
+
+The existing Foundry account uses a default-deny firewall with no trusted
+service bypass. A candidate is a Search shared private link to the Foundry
+model endpoint, with indexers explicitly using private execution. Microsoft
+documents this for eligible Basic services in high-capacity regions, but the
+exact endpoint, query-vectorizer path, approval, capacity and cost still need
+verification. A separately restricted Blob route and agent-to-Search route
+are also required. These are proposals, not authorized firewall changes.
+
+Microsoft's [shared private link guidance](https://learn.microsoft.com/azure/search/search-indexer-howto-access-private)
+identifies `blob`, `openai_account` and `foundry_account` as different
+subresources; the model endpoint and matching group must be verified for this
+Foundry account before selecting a link. The
+[Azure OpenAI vectorizer guidance](https://learn.microsoft.com/azure/search/vector-search-vectorizer-azure-open-ai)
+requires the deployed embedding model and matching vector dimensions, and
+documents using the Search identity without an API key. It documents support
+for several Foundry endpoint domains, not proof that a particular
+endpoint/group combination works here. The
+[Foundry Search tool guidance](https://learn.microsoft.com/azure/foundry/agents/how-to/tools/ai-search)
+documents the intended `vector_simple_hybrid` mode and account-identity
+roles; it does not prove that our proposed network route works. Private-link
+usage has additional charges.
+
+For the same-region Storage case,
+[Microsoft's managed-identity guidance](https://learn.microsoft.com/azure/search/search-howto-managed-identities-storage)
+specifies the Search service's system-assigned identity and a trusted-service
+exception or resource-instance rule when Storage is network protected.
+Its documented Blob indexer role is Storage Blob Data Reader. A narrower
+resource-instance rule is a candidate for review, not an applied change.
+The [shared private link guidance](https://learn.microsoft.com/azure/search/search-indexer-howto-access-private)
+also discusses private links for Storage, including a requirement when a
+Storage private endpoint is already configured. These alternatives need
+validation against the final topology; neither is assumed to authorize the
+other required routes.
+
+Read-only checks on 2026-11-21 show that the existing East US Foundry
+account is an `AIServices` resource with a `cognitiveservices.azure.com`
+endpoint, public network access enabled, default action Deny and no bypass.
+Its ordinary private-link resource advertises group `account` and the
+`cognitiveservices`, `openai` and `services.ai` private DNS zones. That
+observation does not establish how the Search-specific `foundry_account`
+or `openai_account` shared-link group maps to this target. The account model
+catalog lists `text-embedding-3-small` version 1 with Standard,
+GlobalStandard and DataZoneStandard SKUs. The East US usage query reports
+Standard quota limit 350 and usage 50 (unit reported as Count); this is a
+point-in-time quota observation, not a deployment or capacity guarantee.
+
+Microsoft's [shared private link prerequisites](https://learn.microsoft.com/azure/search/search-indexer-howto-access-private#prerequisites)
+list Basic and higher for embedding skillsets in eligible high-capacity regions.
+However, its [indexer execution guidance](https://learn.microsoft.com/azure/search/search-howto-run-reset-indexers#indexer-execution-environment)
+also states that pinning processing to the private execution environment
+requires Standard 2 or higher. These descriptions need clarification for
+this exact classic indexer configuration. Do not assume Basic supports the
+proposed pinned execution until the conflict is resolved. Select the least
+complex supported tier rather than assuming that S2 is required.
+
 On 2026-11-19 the user approved preparing and locally compiling the minimal
 Bicep while subscription-specific pricing and runtime conversation permissions
 remain unresolved. The user subsequently approved validation and provisioning
@@ -34,13 +116,14 @@ production delivery remain later migration phases, not omitted capabilities.
   global inference processing. This supersedes the earlier Australia-only
   requirement; East US placement does not constrain inference to East US or
   to the United States.
-- The user no longer wants budget, capacity-planning or subscription-price
-  review to block this development milestone. Visual Studio subscription
-  credits are not assumed to cover every meter or prevent charges.
+- The user no longer requests a budget or subscription price review for the
+  Search milestone. Visual Studio subscription credits are not assumed to
+  cover every meter or prevent charges.
 - Keep runtime, image-pull, ingestion and deployment identities separate.
 - Continuous evaluation is opt-in.
-- Do not modify Entra, assign roles, create an agent or run paid requests or
-  evaluations without separate approval.
+- Do not modify Entra or run paid requests or evaluations without approval.
+  The approved Search milestone includes its scoped roles, fictional uploads
+  and a separate agent after preflight; network changes require review.
 
 ## Confirmed Azure context
 
